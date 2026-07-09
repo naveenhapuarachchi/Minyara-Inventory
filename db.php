@@ -5,7 +5,7 @@ function getDB() {
     $port = getenv('DB_PORT') ?: '5432';
     $db   = getenv('DB_NAME') ?: 'postgres';
     $user = getenv('DB_USER') ?: 'postgres';
-    $pass = getenv('DB_PASSWORD') ?: '';
+    $pass = getenv('DB_PASSWORD') ?: 'Naveenditel@1234';
     $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=require";
     $options = [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
