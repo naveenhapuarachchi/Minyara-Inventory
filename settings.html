@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Minyara Settings — Manage shop details, database backups, invoice templates and security.">
   <title>Minyara Inventory | Settings</title>
-  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
   <div class="layout">
@@ -31,6 +31,7 @@
           <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
         </a>
         <a href="categories.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <a href="customers.html" class="nav-link" title="Customers"><span class="nav-icon">👥</span><span class="nav-link-text">Customers</span></a>
         <div class="nav-section-label">System</div>
         <a href="settings.html" class="nav-link active"><span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
       </nav>
@@ -217,10 +218,8 @@
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=1"></script>
-  <script src="js/app.js?v=4"></script>
-  <script src="js/api.js?v=7"></script>
+  <script src="js/app.js?v=8"></script>
+  <script src="js/api.js?v=8"></script>
   <script>
     // Extend API
     window.SettingsAPI = {
@@ -349,24 +348,7 @@
       finally { btn.innerHTML='💾 Save All Changes'; btn.disabled=false; }
     }
 
-    async function downloadBackup() {
-      try {
-        const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-        const tables = ['categories', 'products', 'customers', 'bills', 'bill_items', 'stock_adjustments', 'app_settings'];
-        const backup = { generated_at: new Date().toISOString(), source: 'supabase', tables: {} };
-        for (const t of tables) {
-          const { data, error } = await sb.from(t).select('*');
-          if (error) throw error;
-          backup.tables[t] = data;
-        }
-        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'minyara_backup_' + new Date().toISOString().slice(0, 10) + '.json';
-        a.click();
-        toast('success', 'Backup Ready', 'Database exported from Supabase');
-      } catch (e) { toast('error', 'Backup Failed', e.message); }
-    }
+    function downloadBackup() { window.location.href = 'api/backup.php'; }
 
     document.addEventListener('DOMContentLoaded', loadSettings);
   </script>
