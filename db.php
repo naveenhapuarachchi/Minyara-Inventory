@@ -1,15 +1,14 @@
 <?php
 
-// Supabase PostgreSQL connection (for local PHP / XAMPP development)
+// Database connection configuration
 function getDB() {
-    $host = getenv('DB_HOST') ?: 'db.uiizyekyixavhmverrvq.supabase.co';
-    $port = getenv('DB_PORT') ?: '5432';
-    $db   = getenv('DB_NAME') ?: 'postgres';
-    $user = getenv('DB_USER') ?: 'postgres';
-    $pass = getenv('DB_PASSWORD') ?: '';
-    $charset = 'utf8';
+    $host = '127.0.0.1';
+    $db   = 'minyara_inventory';
+    $user = 'root';
+    $pass = ''; // Default XAMPP password is empty
+    $charset = 'utf8mb4';
 
-    $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=require";
+    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
     $options = [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -24,26 +23,16 @@ function getDB() {
     }
 }
 
-function pgLastInsertId($db, $table = 'products') {
-    $seq = $table . '_id_seq';
-    return $db->query("SELECT currval('$seq')")->fetchColumn();
-}
-
+// Helper function to send JSON responses
 function respond($data, $status = 200) {
     header('Content-Type: application/json');
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
     http_response_code($status);
     echo json_encode($data);
     exit;
 }
 
+// Helper function to get POST/PUT JSON body
 function getBody() {
     $input = file_get_contents('php://input');
     return json_decode($input, true) ?: [];
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    respond(['ok' => true]);
 }

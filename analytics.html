@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Minyara Analytics — Comprehensive graphs, category breakdowns, and revenue reporting.">
   <title>Minyara Inventory | Analytics & Reports</title>
-  <link rel="stylesheet" href="css/style.css?v=6">
+  <link rel="stylesheet" href="css/style.css?v=8">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -32,6 +32,7 @@
           <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
         </a>
         <a href="categories.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <a href="customers.html" class="nav-link" title="Customers"><span class="nav-icon">👥</span><span class="nav-link-text">Customers</span></a>
         <div class="nav-section-label">System</div>
         <a href="settings.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
       </nav>
@@ -54,7 +55,7 @@
           <p>Deep dive into sales trends, product metrics, and business health</p>
         </div>
         <div style="display:flex;gap:10px;">
-          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print Report</button>
+          <button class="btn btn-ghost btn-sm" onclick="printReport()" id="btnPrintReport">🖨 Print Report</button>
         </div>
       </header>
 
@@ -115,19 +116,16 @@
 
   <style>
     @media print {
-      .sidebar,.top-header,.date-range-tabs { display:none!important; }
+      .sidebar,.top-header,.date-range-tabs,.no-print { display:none!important; }
       body { background:white!important; color:#000!important; }
       .main { margin-left:0!important; padding:0!important; }
       .card { border:1px solid #ccc!important; box-shadow:none!important; margin-bottom:20px!important; break-inside:avoid; }
       .print-only { display:block!important; }
-      .chart-wrap { height:300px!important; }
     }
   </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=1"></script>
-  <script src="js/app.js?v=6"></script>
-  <script src="js/api.js?v=7"></script>
+  <script src="js/app.js?v=8"></script>
+  <script src="js/api.js?v=8"></script>
   <script>
     Chart.defaults.color = '#8b949e';
     Chart.defaults.font.family = 'Inter';
@@ -205,6 +203,165 @@
         });
 
       } catch(e) { toast('error','Chart Error',e.message); }
+    }
+
+    async function printReport() {
+      const btn = document.getElementById('btnPrintReport');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Preparing...';
+      try {
+        // 1. Collect chart images
+        const chartIds = ['cRev','cCat','cPay','cTopQty','cTopRev'];
+        const chartTitles = ['Revenue Trend','Revenue By Category','Payment Methods Breakdown','Top Products (Qty Sold)','Top Revenue Products'];
+        const chartImages = chartIds.map((id, idx) => {
+          const canvas = document.getElementById(id);
+          try { return { title: chartTitles[idx], src: canvas.toDataURL('image/png') }; }
+          catch(e) { return { title: chartTitles[idx], src: '' }; }
+        });
+
+        // 2. Fetch analytics data for the stats summary table
+        let data = null;
+        try { data = await AnalyticsAPI.charts(currentPeriod); } catch(e) {}
+
+        // 3. Fetch shop settings
+        let shop = {};
+        try { shop = await apiFetch('settings.php'); } catch(e) {}
+        const shopName = shop.shop_name || 'MINYARA';
+        const shopTag  = shop.shop_tagline || '';
+        const shopAddr = shop.shop_address || '';
+        const shopPhone = shop.shop_phone || '';
+        const shopEmail = shop.shop_email || '';
+        const logoB64  = localStorage.getItem('minyara_logo_b64') || '';
+        const currency = shop.currency || 'Rs. ';
+        const periodLabel = { year:'Current Year', month:'This Month', week:'This Week', today:'Today' }[currentPeriod] || currentPeriod;
+        const printDate = new Date().toLocaleString();
+
+        // 4. Build top-products table rows
+        const topQtyRows = (data?.top_products_qty || []).map(i =>
+          `<tr><td>${i.label}</td><td style="text-align:right;">${i.value}</td></tr>`).join('');
+        const topRevRows = (data?.revenue_by_product || []).map(i =>
+          `<tr><td>${i.label}</td><td style="text-align:right;">${currency}${parseFloat(i.value).toFixed(2)}</td></tr>`).join('');
+
+        // 5. Build revenue trend summary
+        const totalRevenue = (data?.revenue_trend || []).reduce((s,i) => s + parseFloat(i.value||0), 0);
+
+        // 6. Build payment method rows
+        const payRows = (data?.payment_methods || []).map(i =>
+          `<tr><td>${i.label.toUpperCase()}</td><td style="text-align:right;">${currency}${parseFloat(i.value).toFixed(2)}</td></tr>`).join('');
+
+        // 7. Compose print HTML
+        const logoHtml = logoB64
+          ? `<img src="${logoB64}" style="height:70px;width:auto;object-fit:contain;" alt="Logo">`
+          : '';
+
+        const chartsHtml = chartImages.map(c => c.src
+          ? `<div style="break-inside:avoid;margin-bottom:28px;">
+               <h3 style="font-size:14px;font-weight:700;color:#334155;border-left:4px solid #1a6ffb;padding-left:10px;margin:0 0 10px;">${c.title}</h3>
+               <img src="${c.src}" style="width:100%;max-height:280px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;padding:8px;box-sizing:border-box;">
+             </div>`
+          : '').join('');
+
+        const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+          <title>Analytics Report — ${shopName}</title>
+          <style>
+            * { box-sizing: border-box; margin:0; padding:0; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size:12px; color:#1e293b; padding:20px 28px; }
+            h1 { font-size:22px; font-weight:900; }
+            h2 { font-size:15px; font-weight:700; margin:24px 0 12px; color:#1a6ffb; border-bottom:2px solid #1a6ffb; padding-bottom:6px; }
+            table { width:100%; border-collapse:collapse; font-size:12px; }
+            th { background:#f1f5f9; padding:8px 10px; text-align:left; font-weight:700; border:1px solid #e2e8f0; }
+            td { padding:7px 10px; border:1px solid #e2e8f0; }
+            tr:nth-child(even) td { background:#f8fafc; }
+            .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1a6ffb; padding-bottom:14px; margin-bottom:22px; }
+            .header-info h1 { color:#0f172a; }
+            .header-info p { color:#64748b; font-size:11px; margin-top:3px; }
+            .meta { text-align:right; font-size:11px; color:#64748b; line-height:1.8; }
+            .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+            .stat-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; }
+            .stat-box .label { font-size:11px; color:#64748b; margin-bottom:4px; }
+            .stat-box .val { font-size:20px; font-weight:800; color:#1a6ffb; }
+            @media print { body { padding:12mm; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div style="display:flex;gap:16px;align-items:center;">
+              ${logoHtml}
+              <div class="header-info">
+                <h1>${shopName}</h1>
+                ${shopTag ? `<p>${shopTag}</p>` : ''}
+                ${shopAddr ? `<p>${shopAddr}</p>` : ''}
+                ${shopPhone || shopEmail ? `<p>${[shopPhone,shopEmail].filter(Boolean).join(' | ')}</p>` : ''}
+              </div>
+            </div>
+            <div class="meta">
+              <strong>Analytics Report</strong><br>
+              Period: ${periodLabel}<br>
+              Generated: ${printDate}
+            </div>
+          </div>
+
+          <h2>📊 Summary</h2>
+          <div class="grid2">
+            <div class="stat-box"><div class="label">Total Revenue (${periodLabel})</div><div class="val">${currency}${totalRevenue.toFixed(2)}</div></div>
+            <div class="stat-box"><div class="label">Payment Breakdown</div>
+              <table style="margin-top:8px;"><thead><tr><th>Method</th><th>Amount</th></tr></thead><tbody>${payRows || '<tr><td colspan="2">No data</td></tr>'}</tbody></table>
+            </div>
+          </div>
+
+          <h2>📈 Charts</h2>
+          ${chartsHtml}
+
+          <h2>🏆 Top Products by Quantity Sold</h2>
+          <table style="margin-bottom:24px;"><thead><tr><th>Product</th><th style="text-align:right;">Qty Sold</th></tr></thead>
+          <tbody>${topQtyRows || '<tr><td colspan="2">No data</td></tr>'}</tbody></table>
+
+          <h2>💰 Top Products by Revenue</h2>
+          <table><thead><tr><th>Product</th><th style="text-align:right;">Revenue</th></tr></thead>
+          <tbody>${topRevRows || '<tr><td colspan="2">No data</td></tr>'}</tbody></table>
+
+          <div style="margin-top:40px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px;">
+            ${shopName} Analytics Report &mdash; System generated on ${printDate}. No signature required.
+          </div>
+        </body></html>`;
+
+        // Create hidden iframe for printing to bypass popup blockers
+        let iframe = document.getElementById('printReportIframe');
+        if (iframe) iframe.remove();
+        
+        iframe = document.createElement('iframe');
+        iframe.id = 'printReportIframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        // Give images/styles time to load in the iframe, then trigger print
+        setTimeout(() => {
+          try {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            // Clean up iframe after print dialog closes
+            setTimeout(() => iframe.remove(), 1000);
+          } catch(e) {
+            toast('error', 'Print Error', e.message);
+          }
+        }, 600);
+
+      } catch(e) {
+        toast('error', 'Print Error', e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🖨 Print Report';
+      }
     }
 
     document.addEventListener('DOMContentLoaded', loadData);

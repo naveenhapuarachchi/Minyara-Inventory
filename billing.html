@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Minyara POS — Point of Sale billing system. Create bills, manage cart, print A4 invoices.">
   <title>Minyara Inventory | POS Billing</title>
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=8">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
@@ -62,6 +62,8 @@
           <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span></a>
         <a href="categories.html" class="nav-link" title="Categories">
           <span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <a href="customers.html" class="nav-link" title="Customers">
+          <span class="nav-icon">👥</span><span class="nav-link-text">Customers</span></a>
         <div class="nav-section-label">System</div>
         <a href="settings.html" class="nav-link" title="Settings (Alt+S)">
           <span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
@@ -88,8 +90,7 @@
           <p>Create new bills and deduct stock • <span style="font-family:monospace;font-size:11px;opacity:0.6">Enter=Add • ESC=Clear • Alt+C=Clear Cart</span></p>
         </div>
         <div style="display:flex;gap:10px;align-items:center;">
-          <input type="text" id="custName" class="form-control" placeholder="Customer Name (Optional)" style="width:200px">
-          <input type="text" id="custPhone" class="form-control" placeholder="Phone Number" style="width:160px">
+          <a href="customers.html" class="btn btn-ghost btn-sm" title="Manage Customers" style="font-size:12px;white-space:nowrap;text-decoration:none;">👥 Customers</a>
           <button class="btn btn-ghost btn-sm" onclick="openGlobalSearch()" title="Global Search (Ctrl+K)" style="font-size:12px;font-family:monospace">🔍 Ctrl+K</button>
         </div>
       </header>
@@ -188,6 +189,13 @@
                   <option value="other">🏦 Other</option>
                 </select>
               </div>
+              <!-- Date and Time Selector -->
+              <div style="margin-bottom:8px;">
+                <div class="input-group" style="width:100%">
+                  <span class="input-addon">📅 Date:</span>
+                  <input type="datetime-local" id="inpCreatedAt" class="form-control">
+                </div>
+              </div>
               <!-- Cash Amount + Change Display -->
               <div style="margin-bottom:6px;">
                 <div class="input-group" style="width:100%">
@@ -197,6 +205,32 @@
                 <div id="changeDisplay" class="cash-change-display" style="display:none;margin-top:6px;font-size:16px;padding:8px;border-radius:var(--radius-sm);">
                   Change: Rs. 0.00
                 </div>
+              </div>
+              <!-- Note Field -->
+              <div style="margin-bottom:8px;">
+                <div class="input-group" style="width:100%">
+                  <span class="input-addon">📝 Note:</span>
+                  <input type="text" id="inpNotes" class="form-control" placeholder="Add a note to this bill..." autocomplete="off">
+                </div>
+              </div>
+              <!-- Customer Selection Section -->
+              <div style="margin-bottom:10px; padding:8px 0; border-top:1px dashed var(--border); border-bottom:1px dashed var(--border);">
+                <div class="cust-name-wrapper" style="margin-bottom:6px; position:relative; overflow:visible;">
+                  <div class="input-group" style="width:100%">
+                    <span class="input-addon">👤 Customer:</span>
+                    <input type="text" id="custName" class="form-control" placeholder="Search or type name..." style="width:100%" autocomplete="off">
+                  </div>
+                  <div id="custSuggestions" class="autocomplete-suggestions" style="display:none; bottom:calc(100% + 4px); top:auto; margin-bottom:0; margin-top:0;"></div>
+                </div>
+                <div class="input-group" style="width:100%">
+                  <span class="input-addon">📞 Phone:</span>
+                  <input type="text" id="custPhone" class="form-control" placeholder="Phone Number">
+                </div>
+              </div>
+              <!-- Save Customer Checkbox -->
+              <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px; padding:2px 4px;">
+                <input type="checkbox" id="chkSaveCustomer" style="width:16px; height:16px; cursor:pointer;">
+                <label for="chkSaveCustomer" style="font-size:12px; color:var(--text-secondary); cursor:pointer; user-select:none;">💾 Save/Register Customer</label>
               </div>
               <button class="btn btn-primary btn-lg btn-full" onclick="saveBill()" id="btnSave">
                 🧾 Save Bill &amp; Print
@@ -278,10 +312,8 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=1"></script>
-  <script src="js/app.js?v=5"></script>
-  <script src="js/api.js?v=7"></script>
+  <script src="js/app.js?v=8"></script>
+  <script src="js/api.js?v=8"></script>
   <script>
     let products = [];
     let categories = [];
@@ -291,6 +323,12 @@
     let userModifiedPaid = false;
     let discountMode = 'fixed'; // 'fixed' | 'percent'
     let activeCatFilter = '';
+
+    function getLocalDateTimeString() {
+      const now = new Date();
+      const tzOffset = now.getTimezoneOffset() * 60000;
+      return (new Date(now - tzOffset)).toISOString().slice(0, 16);
+    }
 
     const COLOR_NAMES = {
       '#EF4444': 'Red', '#991B1B': 'Dark Red', '#F97316': 'Orange',
@@ -362,6 +400,7 @@
 
     async function init() {
       try {
+        document.getElementById('inpCreatedAt').value = getLocalDateTimeString();
         try {
           shopSettings = await apiFetch('settings.php');
           if (shopSettings) {
@@ -548,6 +587,13 @@
       document.getElementById('manualPrice').value = '';
       document.getElementById('manualQty').value = 1;
       document.getElementById('inpStatus').value = 'paid';
+      document.getElementById('inpCreatedAt').value = getLocalDateTimeString();
+      
+      // Notes & Autocomplete Clear
+      document.getElementById('inpNotes').value = '';
+      document.getElementById('chkSaveCustomer').checked = false;
+      selectedCustomerId = null;
+      
       updateCartUI();
     }
 
@@ -563,24 +609,29 @@
       const { discountAmount, total } = calcDiscountedTotal(sub, discVal, discountMode);
       const paidStr = document.getElementById('inpPaid').value;
       const paid = paidStr === '' ? total : parseFloat(paidStr);
+      const customCreatedAt = document.getElementById('inpCreatedAt').value;
 
       const payload = {
         customer_name: document.getElementById('custName').value.trim(),
         customer_phone: document.getElementById('custPhone').value.trim(),
+        customer_id: selectedCustomerId,
+        save_customer: document.getElementById('chkSaveCustomer').checked,
+        notes: document.getElementById('inpNotes').value.trim(),
         discount: discountAmount,
         discount_mode: discountMode,
         discount_value: discVal,
         tax: 0, paid_amount: paid,
         payment_method: document.getElementById('inpPayment').value,
         status: document.getElementById('inpStatus').value,
-        items: cart
+        items: cart,
+        created_at: customCreatedAt ? customCreatedAt.replace('T', ' ') + ':00' : null
       };
 
       try {
         const res = await BillsAPI.create(payload);
         lastSavedBill = {
           ...payload, bill_no: res.bill_no, subtotal: sub, total, change: res.change,
-          created_at: new Date().toISOString()
+          created_at: payload.created_at || new Date().toISOString()
         };
         document.getElementById('printBillNo').textContent = `Invoice: ${res.bill_no} • Total: ${formatCurrency(total)}`;
         preparePrintDOM();
@@ -609,6 +660,7 @@
       document.getElementById('pTotal').textContent = formatCurrency(b.total);
       document.getElementById('pPaid').textContent = formatCurrency(b.paid_amount);
       document.getElementById('pChange').textContent = formatCurrency(Math.max(0, b.change || b.paid_amount - b.total));
+      
       document.getElementById('pItems').innerHTML = b.items.map(i => `
         <tr style="background:#fff!important;">
           <td style="padding:10px;border:1px solid #ccc;color:#000!important;">${i.product_name}</td>
@@ -647,7 +699,7 @@
         doc.line(14, 44, 196, 44);
         doc.setFontSize(11);
         doc.text('Invoice No: ' + b.bill_no, 14, 54);
-        doc.text('Date: ' + new Date(b.created_at).toLocaleDateString(), 14, 60);
+        doc.text('Date: ' + formatDate(b.created_at), 14, 60);
         doc.text('Bill To: ' + (b.customer_name || 'Walk-in'), 130, 54);
         const tData = b.items.map(i => [i.product_name, i.qty.toString(), formatCurrency(i.unit_price), formatCurrency(i.total)]);
         doc.autoTable({
@@ -661,6 +713,7 @@
         doc.text(`Discount: ${formatCurrency(b.discount)}`, 130, finalY + 6);
         doc.setFontSize(14);
         doc.text(`Total: ${formatCurrency(b.total)}`, 130, finalY + 16);
+        
         doc.save(`MINYARA_Bill_${b.bill_no}.pdf`);
       } catch (e) {
         toast('error', 'PDF Error', e.message);
@@ -696,8 +749,109 @@
       document.addEventListener('keydown', e => {
         if (e.altKey && e.key === 'c') { e.preventDefault(); clearCartPrompt(); }
       });
+      
+      // ─── Customer Autocomplete Listeners ───
+      const custNameInput = document.getElementById('custName');
+      const custSuggBox   = document.getElementById('custSuggestions');
+
+      // Prevent the suggestions box mousedown from stealing focus
+      custSuggBox.addEventListener('mousedown', (e) => { e.preventDefault(); });
+
+      custNameInput.addEventListener('focus', () => { searchCustomers(); });
+      custNameInput.addEventListener('input', debounce(searchCustomers, 200));
+      custNameInput.addEventListener('blur',  () => {
+        // blur fires after mousedown but BEFORE click, so by the time
+        // mousedown has already been prevented, the click can still fire.
+        // We hide after a tiny delay as a final safety net.
+        setTimeout(() => { custSuggBox.style.display = 'none'; }, 150);
+      });
+
+      // Escape key closes suggestions
+      custNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') custSuggBox.style.display = 'none';
+      });
+
+      document.getElementById('custPhone').addEventListener('input', () => {
+        selectedCustomerId = null;
+      });
     });
+
+    // ─── Customer Autocomplete State ───
+    let selectedCustomerId = null;
+    const _custMap = {};
+
+    async function searchCustomers() {
+      const q       = document.getElementById('custName').value.trim();
+      const suggBox = document.getElementById('custSuggestions');
+      try {
+        const params = q.length >= 1 ? { search: q } : {};
+        const list   = await CustomersAPI.list(params);
+
+        if (list && list.length > 0) {
+          list.forEach(c => { _custMap[c.id] = c; });
+
+          // Build rows — use data-cid + a delegated click on the box instead of inline onclick
+          suggBox.innerHTML = [
+            ...list.slice(0, 8).map(c => `
+              <div class="autocomplete-suggestion" data-cid="${c.id}">
+                <span>${escapeHTML(c.name)}</span>
+                ${c.phone ? `<span class="sug-phone">${escapeHTML(c.phone)}</span>` : ''}
+              </div>`),
+            `<div style="padding:8px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;">
+               <span>${list.length} customer${list.length>1?'s':''} found</span>
+               <a href="customers.html" style="color:var(--brand-blue);font-weight:600;text-decoration:none;">👥 Manage Customers →</a>
+             </div>`
+          ].join('');
+          suggBox.style.display = 'block';
+
+        } else if (q.length >= 1) {
+          suggBox.innerHTML = `
+            <div style="padding:12px 14px;">
+              <div style="color:var(--text-muted);font-size:12px;margin-bottom:8px;">No match for "${escapeHTML(q)}"</div>
+              <a href="customers.html" class="btn btn-sm btn-ghost" style="font-size:12px;text-decoration:none;">👥 Add "${escapeHTML(q)}" as New Customer</a>
+            </div>`;
+          suggBox.style.display = 'block';
+          selectedCustomerId = null;
+
+        } else {
+          suggBox.style.display = 'none';
+          selectedCustomerId = null;
+        }
+
+      } catch (err) {
+        console.error('Customer search error:', err);
+        suggBox.style.display = 'none';
+      }
+    }
+
+    // Delegated click handler on the suggestions box itself
+    document.getElementById('custSuggestions').addEventListener('click', (e) => {
+      const row = e.target.closest('[data-cid]');
+      if (row) {
+        const id = parseInt(row.dataset.cid, 10);
+        selectCustomer(id);
+      }
+    });
+
+    function selectCustomer(id) {
+      const c = _custMap[id];
+      if (!c) return;
+      document.getElementById('custName').value  = c.name;
+      document.getElementById('custPhone').value = c.phone || '';
+      selectedCustomerId = id;
+      document.getElementById('custSuggestions').style.display = 'none';
+      document.getElementById('custName').focus();
+      toast('success', '✅ Customer Selected', `${c.name}${c.phone ? ' · ' + c.phone : ''}`, 2000);
+    }
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    function escapeQuote(str) {
+      return (str || '').replace(/'/g, "\\'");
+    }
   </script>
 </body>
-
 </html>
