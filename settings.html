@@ -217,8 +217,10 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js?v=1"></script>
   <script src="js/app.js?v=4"></script>
-  <script src="js/api.js?v=4"></script>
+  <script src="js/api.js?v=7"></script>
   <script>
     // Extend API
     window.SettingsAPI = {
@@ -347,7 +349,24 @@
       finally { btn.innerHTML='💾 Save All Changes'; btn.disabled=false; }
     }
 
-    function downloadBackup() { window.location.href = 'api/backup.php'; }
+    async function downloadBackup() {
+      try {
+        const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        const tables = ['categories', 'products', 'customers', 'bills', 'bill_items', 'stock_adjustments', 'app_settings'];
+        const backup = { generated_at: new Date().toISOString(), source: 'supabase', tables: {} };
+        for (const t of tables) {
+          const { data, error } = await sb.from(t).select('*');
+          if (error) throw error;
+          backup.tables[t] = data;
+        }
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'minyara_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+        a.click();
+        toast('success', 'Backup Ready', 'Database exported from Supabase');
+      } catch (e) { toast('error', 'Backup Failed', e.message); }
+    }
 
     document.addEventListener('DOMContentLoaded', loadSettings);
   </script>

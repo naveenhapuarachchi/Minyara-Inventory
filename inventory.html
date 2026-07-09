@@ -257,8 +257,10 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js?v=1"></script>
   <script src="js/app.js?v=4"></script>
-  <script src="js/api.js?v=4"></script>
+  <script src="js/api.js?v=7"></script>
   <script>
     let products = [];
     let categories = [];
@@ -468,7 +470,7 @@
         try {
           toast('info','Uploading...','Uploading product image');
           const res = await ProductsAPI.uploadImage(input.files[0]);
-          document.getElementById('pImagePath').value = res.path;
+          document.getElementById('pImagePath').value = res.url || res.path;
           toast('success','Uploaded','Image uploaded successfully');
         } catch(e) { toast('error','Upload Error',e.message); removeImage(); }
       }
