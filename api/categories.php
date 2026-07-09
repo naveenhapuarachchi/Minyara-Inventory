@@ -16,7 +16,7 @@ switch ($method) {
             $stmt = $db->query("
                 SELECT c.*, COUNT(p.id) AS product_count
                 FROM categories c
-                LEFT JOIN products p ON p.category_id = c.id AND p.is_active = true
+                LEFT JOIN products p ON p.category_id = c.id AND p.is_active = 1
                 GROUP BY c.id ORDER BY c.name
             ");
             respond($stmt->fetchAll());
@@ -26,9 +26,9 @@ switch ($method) {
     case 'POST':
         $body = getBody();
         if (empty($body['name'])) respond(['error' => 'Name required'], 400);
-        $stmt = $db->prepare("INSERT INTO categories (name, description) VALUES (?, ?) RETURNING id");
+        $stmt = $db->prepare("INSERT INTO categories (name, description) VALUES (?, ?)");
         $stmt->execute([$body['name'], $body['description'] ?? '']);
-        respond(['id' => $stmt->fetchColumn(), 'message' => 'Category created'], 201);
+        respond(['id' => $db->lastInsertId(), 'message' => 'Category created'], 201);
         break;
 
     case 'PUT':
@@ -42,6 +42,7 @@ switch ($method) {
 
     case 'DELETE':
         if (!$id) respond(['error' => 'ID required'], 400);
+        // Nullify category on all products first to avoid orphaned references
         $db->prepare("UPDATE products SET category_id=NULL WHERE category_id=?")->execute([$id]);
         $stmt = $db->prepare("DELETE FROM categories WHERE id=?");
         $stmt->execute([$id]);

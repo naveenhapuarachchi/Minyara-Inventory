@@ -3563,3 +3563,68 @@ tr.stock-low {
   animation: successPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: inline-block;
 }
+
+/* ─── Autocomplete suggestions styling ─── */
+.cust-name-wrapper {
+  position: relative;
+  overflow: visible;
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
+}
+
+.autocomplete-suggestion {
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: background 0.1s, color 0.1s;
+  user-select: none;
+}
+
+.autocomplete-suggestion:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-suggestion:hover {
+  background: var(--brand-blue, #3b82f6);
+  color: #fff;
+}
+
+.autocomplete-suggestion:hover .sug-phone {
+  color: rgba(255,255,255,0.8);
+}
+
+.autocomplete-suggestion:active {
+  background: var(--brand-blue-dark, #2563eb);
+  color: #fff;
+}
+
+.autocomplete-suggestion.selected {
+  background: var(--bg-card-hover);
+}
+
+.autocomplete-suggestion .sug-phone {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: monospace;
+  flex-shrink: 0;
+}

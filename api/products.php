@@ -26,12 +26,12 @@ switch ($method) {
                 SELECT p.*, c.name AS category_name
                 FROM products p
                 LEFT JOIN categories c ON c.id = p.category_id
-                WHERE p.is_active = true
+                WHERE p.is_active = 1
             ";
             $params = [];
 
             if ($search) {
-                $sql .= " AND (p.name ILIKE ? OR p.sku ILIKE ?)";
+                $sql .= " AND (p.name LIKE ? OR p.sku LIKE ?)";
                 $params[] = "%$search%";
                 $params[] = "%$search%";
             }
@@ -55,6 +55,7 @@ switch ($method) {
         if (empty($body['name'])) respond(['error' => 'Name required'], 400);
         if (!isset($body['sell_price'])) respond(['error' => 'Sell price required'], 400);
 
+        // Auto-generate SKU if not provided
         if (empty($body['sku'])) {
             $prefix = strtoupper(substr(preg_replace('/[^a-z]/i', '', $body['name']), 0, 3));
             $body['sku'] = $prefix . '-' . strtoupper(uniqid());
@@ -63,7 +64,6 @@ switch ($method) {
         $stmt = $db->prepare("
             INSERT INTO products (category_id, name, sku, unit, cost_price, sell_price, stock_qty, min_stock, description, color, image)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            RETURNING id
         ");
         $stmt->execute([
             $body['category_id'] ?? null,
@@ -78,8 +78,9 @@ switch ($method) {
             $body['color'] ?? null,
             $body['image'] ?? null,
         ]);
-        $newId = $stmt->fetchColumn();
+        $newId = $db->lastInsertId();
 
+        // Log initial stock if any
         if (($body['stock_qty'] ?? 0) > 0) {
             $stmt2 = $db->prepare("INSERT INTO stock_adjustments (product_id, type, quantity, note) VALUES (?, 'in', ?, 'Initial stock')");
             $stmt2->execute([$newId, $body['stock_qty']]);
@@ -91,7 +92,6 @@ switch ($method) {
     case 'PUT':
         if (!$id) respond(['error' => 'ID required'], 400);
         $body = getBody();
-        $isActive = isset($body['is_active']) ? filter_var($body['is_active'], FILTER_VALIDATE_BOOLEAN) : true;
         $stmt = $db->prepare("
             UPDATE products SET
                 category_id=?, name=?, sku=?, unit=?, cost_price=?, sell_price=?,
@@ -108,7 +108,7 @@ switch ($method) {
             $body['min_stock'] ?? 5,
             $body['description'] ?? '',
             $body['color'] ?? null,
-            $isActive,
+            $body['is_active'] ?? 1,
             $body['image'] ?? null,
             $id,
         ]);
@@ -117,7 +117,7 @@ switch ($method) {
 
     case 'DELETE':
         if (!$id) respond(['error' => 'ID required'], 400);
-        $stmt = $db->prepare("UPDATE products SET is_active=false WHERE id=?");
+        $stmt = $db->prepare("UPDATE products SET is_active=0 WHERE id=?");
         $stmt->execute([$id]);
         respond(['message' => 'Product deactivated']);
         break;
