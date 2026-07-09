@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minyara Bills History — View, search, filter, reprint and manage all past bills and invoices.">
+  <title>Minyara Inventory | Bills History</title>
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    @media print {
+      .sidebar,.top-header,.no-print { display:none!important; }
+      body { background:white!important; }
+      #printAreaInside { visibility:visible!important; position:static!important; color:#000!important; }
+      .main { margin-left:0!important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle Sidebar">‹</button>
+      <a href="index.html" class="sidebar-brand">
+        <img src="assets/logo.png" alt="Minyara Logo" id="sidebarLogo"
+          onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhNmZmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TTwvdGV4dD48L3N2Zz4='">
+        <div class="sidebar-brand-text">
+          <div class="sidebar-brand-name">MINYARA</div>
+          <div class="sidebar-brand-sub">Inventory &amp; Billing</div>
+        </div>
+      </a>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main Menu</div>
+        <a href="index.html" class="nav-link" title="Dashboard (Alt+D)"><span class="nav-icon">📊</span><span class="nav-link-text">Dashboard</span></a>
+        <a href="analytics.html" class="nav-link" title="Analytics (Alt+A)"><span class="nav-icon">📈</span><span class="nav-link-text">Analytics &amp; Reports</span></a>
+        <a href="billing.html" class="nav-link" title="POS Billing (Alt+B)"><span class="nav-icon">🧾</span><span class="nav-link-text">POS / Billing</span></a>
+        <a href="bills.html" class="nav-link active" title="Bills History (Alt+H)">
+          <span class="nav-icon">📋</span><span class="nav-link-text">Bills History</span>
+          <span class="nav-badge orange" id="navBadgeBills" style="display:none">0</span>
+        </a>
+        <div class="nav-section-label">Management</div>
+        <a href="inventory.html" class="nav-link" title="Inventory (Alt+I)">
+          <span class="nav-icon">📦</span><span class="nav-link-text">Inventory / Stock</span>
+          <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
+        </a>
+        <a href="categories.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <div class="nav-section-label">System</div>
+        <a href="settings.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-time">
+          <div class="sidebar-clock" id="sidebarTime">...</div>
+          <div class="sidebar-date" id="sidebarDate">...</div>
+        </div>
+        <div class="sidebar-dark-toggle">
+          <span class="sidebar-dark-toggle-label">🌙 Dark Mode</span>
+          <label class="dark-toggle-switch">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="dark-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top-header no-print">
+        <div class="page-title">
+          <h1>Bills History</h1>
+          <p>View past transactions, reprint invoices, and manage payments</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" onclick="exportBills()">📥 Export CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="openGlobalSearch()" style="font-size:12px;font-family:monospace">🔍 Ctrl+K</button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- ── Summary Stats Bar ── -->
+        <div class="stats-bar" id="statsBar">
+          <div class="stats-bar-item">
+            <div class="stats-bar-icon">🧾</div>
+            <div><div class="stats-bar-label">Showing Bills</div><div class="stats-bar-value" id="statCount">—</div></div>
+          </div>
+          <div class="stats-bar-item">
+            <div class="stats-bar-icon">💰</div>
+            <div><div class="stats-bar-label">Total Revenue</div><div class="stats-bar-value" id="statRevenue">—</div></div>
+          </div>
+          <div class="stats-bar-item">
+            <div class="stats-bar-icon">✅</div>
+            <div><div class="stats-bar-label">Paid Bills</div><div class="stats-bar-value" id="statPaid">—</div></div>
+          </div>
+          <div class="stats-bar-item">
+            <div class="stats-bar-icon">⏳</div>
+            <div><div class="stats-bar-label">Pending Bills</div><div class="stats-bar-value" id="statPending">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <!-- ── Filter Toolbar ── -->
+          <div class="card-header no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <div class="search-bar" style="max-width:280px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchInput" class="form-control" placeholder="Search Bill No / Customer...">
+            </div>
+            <div class="input-group">
+              <span class="input-addon">From</span>
+              <input type="date" id="dateFrom" class="form-control">
+            </div>
+            <div class="input-group">
+              <span class="input-addon">To</span>
+              <input type="date" id="dateTo" class="form-control">
+            </div>
+            <select id="payFilter" class="form-control" style="width:140px;" onchange="loadBills()">
+              <option value="">All Payment</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="other">Other</option>
+            </select>
+            <select id="statusFilter" class="form-control" style="width:130px;" onchange="loadBills()">
+              <option value="">All Status</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Pending</option>
+            </select>
+            <button class="btn btn-primary" onclick="loadBills()">🔍 Filter</button>
+            <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
+          </div>
+
+          <div class="table-wrapper" style="border-radius:0;border:none;">
+            <table id="billsTable">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Bill No</th>
+                  <th>Customer</th>
+                  <th>Payment</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th style="text-align:right;min-width:160px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="billsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══ View Bill Modal ═══ -->
+  <div id="viewModal" class="modal-backdrop">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">🧾 Invoice: <span id="vBillNo" style="color:var(--brand-blue)"></span></div>
+        <button class="modal-close" onclick="closeModal('viewModal')">✕</button>
+      </div>
+      <div class="modal-body" id="printAreaInside" style="background:#fff;color:#000;padding:28px;border-radius:0;">
+        <div style="display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:14px;margin-bottom:18px;">
+          <div>
+            <h1 style="margin:0;font-size:22px;font-weight:900;" id="vShopName">MINYARA</h1>
+            <p style="margin:3px 0 0;font-size:12px;" id="vShopTag">A MOMENTS OF TECHNOLOGY</p>
+            <p style="margin:2px 0 0;font-size:11px;" id="vShopAddr">Printing &amp; Stationery</p>
+            <p style="margin:2px 0 0;font-size:11px;" id="vShopEmail"></p>
+          </div>
+          <div style="text-align:right;font-size:13px;">
+            <strong>Invoice:</strong> <span id="vNo"></span><br>
+            <strong>Date:</strong> <span id="vDate"></span><br>
+            <strong>Method:</strong> <span id="vMethod"></span><br>
+            <strong>Status:</strong> <span id="vStatus"></span>
+          </div>
+        </div>
+        <div style="margin-bottom:18px;font-size:13px;">
+          <strong>Bill To:</strong><br>
+          <span id="vCustName" style="font-size:14px;font-weight:600;">-</span><br>
+          <span id="vCustPhone" style="color:#555;"></span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:13px;" id="vTable">
+          <thead>
+            <tr style="background:#f0f0f0!important;border-bottom:2px solid #000;">
+              <th style="padding:10px;border:1px solid #ccc;text-align:left;color:#000!important;background:#f0f0f0!important;">Item</th>
+              <th style="padding:10px;border:1px solid #ccc;text-align:center;color:#000!important;background:#f0f0f0!important;">Qty</th>
+              <th style="padding:10px;border:1px solid #ccc;text-align:right;color:#000!important;background:#f0f0f0!important;">Price</th>
+              <th style="padding:10px;border:1px solid #ccc;text-align:right;color:#000!important;background:#f0f0f0!important;">Total</th>
+            </tr>
+          </thead>
+          <tbody id="vItems" style="background:#fff;"></tbody>
+        </table>
+        <div style="display:flex;justify-content:flex-end;">
+          <div style="width:280px;font-size:13px;color:#000;">
+            <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Subtotal:</span><span id="vSub"></span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Discount:</span><span id="vDisc"></span></div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #000;font-weight:bold;font-size:16px;color:#000;">
+              <span>Grand Total:</span><span id="vTotal"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer no-print" style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="font-size:12px;font-weight:600;color:var(--text-secondary);">Status:</label>
+          <select id="vStatusUpdate" class="form-control" style="width:130px;font-size:12px;height:auto;padding:6px;" onchange="changeBillStatus()">
+            <option value="paid">✅ Paid</option>
+            <option value="unpaid">⏳ Pending</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+          <button class="btn btn-primary" onclick="printInvoice()">🖨️ Print A4</button>
+          <button class="btn btn-ghost" onclick="pdfInvoice()">💾 Save PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js?v=4"></script>
+  <script src="js/api.js?v=4"></script>
+  <script>
+    let bills = [];
+    let currentBill = null;
+    let shopSettings = null;
+
+    async function loadBills() {
+      const params = {
+        search: document.getElementById('searchInput').value,
+        from: document.getElementById('dateFrom').value,
+        to: document.getElementById('dateTo').value,
+        payment_method: document.getElementById('payFilter').value,
+        status: document.getElementById('statusFilter').value
+      };
+      try {
+        if (!shopSettings) {
+          try {
+            shopSettings = await apiFetch('settings.php');
+            if (shopSettings) {
+              document.getElementById('vShopName').textContent = shopSettings.shop_name || 'MINYARA';
+              document.getElementById('vShopTag').textContent = shopSettings.shop_tagline || '';
+              document.getElementById('vShopAddr').textContent = shopSettings.shop_address || '';
+              if (shopSettings.shop_phone) document.getElementById('vShopAddr').textContent += ' | ' + shopSettings.shop_phone;
+              if (shopSettings.shop_email) document.getElementById('vShopEmail').textContent = shopSettings.shop_email;
+            }
+          } catch (e) {}
+        }
+        bills = await BillsAPI.list(params);
+        renderTable();
+        updateStats();
+      } catch (e) {
+        toast('error', 'Failed to load', e.message);
+      }
+    }
+
+    function updateStats() {
+      const total = bills.reduce((s, b) => s + parseFloat(b.total || 0), 0);
+      const paid = bills.filter(b => b.status === 'paid').length;
+      const pending = bills.filter(b => b.status === 'unpaid').length;
+      document.getElementById('statCount').textContent = bills.length;
+      document.getElementById('statRevenue').textContent = formatCurrency(total);
+      document.getElementById('statPaid').textContent = paid;
+      document.getElementById('statPending').textContent = pending;
+    }
+
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('dateFrom').value = '';
+      document.getElementById('dateTo').value = '';
+      document.getElementById('payFilter').value = '';
+      document.getElementById('statusFilter').value = '';
+      loadBills();
+    }
+
+    function renderTable() {
+      const tb = document.getElementById('billsBody');
+      if (!bills.length) {
+        tb.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:50px;color:var(--text-muted);">
+          <div style="font-size:36px;margin-bottom:8px;">🧾</div>No bills found matching criteria.</td></tr>`;
+        return;
+      }
+      tb.innerHTML = bills.map(b => `
+        <tr>
+          <td>
+            <div style="font-weight:600;color:var(--text-primary)">${formatDate(b.created_at)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${formatDateTime(b.created_at).split(',').slice(1).join(',').trim()}</div>
+          </td>
+          <td style="font-weight:800;color:var(--brand-blue)">${b.bill_no}</td>
+          <td>
+            ${b.customer_name ? `<div style="font-weight:600">${b.customer_name}</div>` : `<i style="color:var(--text-muted)">Walk-in</i>`}
+            ${b.customer_phone ? `<div style="font-size:11px;color:var(--text-muted)">${b.customer_phone}</div>` : ''}
+          </td>
+          <td><span class="badge badge-muted" style="text-transform:uppercase">${b.payment_method}</span></td>
+          <td style="font-weight:800;color:var(--success)">${formatCurrency(b.total)}</td>
+          <td>${statusBadge(b.status)}</td>
+          <td style="text-align:right">
+            <button class="btn btn-sm btn-primary" onclick="viewBill(${b.id})" style="padding:5px 10px;">👁️ View</button>
+            <button class="btn btn-sm btn-ghost" onclick="deleteBill(${b.id},'${b.bill_no}')" style="color:var(--danger);margin-left:4px;" title="Delete &amp; Restock">🗑️</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    async function viewBill(id) {
+      try {
+        const b = await BillsAPI.get(id);
+        currentBill = b;
+        document.getElementById('vBillNo').textContent = b.bill_no;
+        document.getElementById('vNo').textContent = b.bill_no;
+        document.getElementById('vDate').textContent = formatDateTime(b.created_at);
+        document.getElementById('vMethod').textContent = b.payment_method.toUpperCase();
+        document.getElementById('vStatus').innerHTML = statusBadge(b.status);
+        document.getElementById('vStatusUpdate').value = b.status === 'unpaid' ? 'unpaid' : 'paid';
+        document.getElementById('vCustName').textContent = b.customer_name || 'Walk-in Customer';
+        document.getElementById('vCustPhone').textContent = b.customer_phone || '';
+        document.getElementById('vSub').textContent = formatCurrency(b.subtotal);
+        document.getElementById('vDisc').textContent = '- ' + formatCurrency(b.discount);
+        document.getElementById('vTotal').textContent = formatCurrency(b.total);
+        document.getElementById('vItems').innerHTML = (b.items || []).map(i => {
+          const img = i.product_image
+            ? `<img src="${i.product_image}" style="width:28px;height:28px;border-radius:4px;object-fit:cover;border:1px solid #e2e8f0;vertical-align:middle;margin-right:8px" onerror="this.src='assets/no-image.png'">`
+            : (i.product_id ? `<img src="assets/no-image.png" style="width:28px;height:28px;border-radius:4px;object-fit:cover;border:1px solid #e2e8f0;vertical-align:middle;margin-right:8px">` : '');
+          return `
+            <tr style="background:#fff!important;">
+              <td style="padding:10px;border:1px solid #ccc;color:#000!important;">${img}${i.product_name}</td>
+              <td style="padding:10px;border:1px solid #ccc;text-align:center;color:#000!important;">${i.qty}</td>
+              <td style="padding:10px;border:1px solid #ccc;text-align:right;color:#000!important;">${formatCurrency(i.unit_price)}</td>
+              <td style="padding:10px;border:1px solid #ccc;text-align:right;font-weight:700;color:#000!important;">${formatCurrency(i.total)}</td>
+            </tr>`;
+        }).join('');
+        openModal('viewModal');
+      } catch (e) { toast('error', 'Error', e.message); }
+    }
+
+    async function changeBillStatus() {
+      if (!currentBill) return;
+      const newStatus = document.getElementById('vStatusUpdate').value;
+      if (newStatus === currentBill.status) return;
+      try {
+        await BillsAPI.updateStatus(currentBill.id, newStatus);
+        currentBill.status = newStatus;
+        document.getElementById('vStatus').innerHTML = statusBadge(newStatus);
+        toast('success', 'Status Updated', 'Bill status changed to ' + newStatus);
+        loadBills();
+      } catch (e) {
+        toast('error', 'Update Failed', e.message);
+        document.getElementById('vStatusUpdate').value = currentBill.status;
+      }
+    }
+
+    async function deleteBill(id, no) {
+      if (await confirmAction(`Delete Bill ${no}?\n\nThis will restore the products back to your inventory.`, 'Delete Bill', '🗑️ Delete & Restock', 'danger')) {
+        try {
+          await BillsAPI.delete(id);
+          toast('success', 'Deleted', 'Bill deleted and stock restored');
+          loadBills();
+        } catch (e) { toast('error', 'Deletion Failed', e.message); }
+      }
+    }
+
+    function printInvoice() {
+      const content = document.getElementById('printAreaInside').innerHTML;
+      const win = window.open('', '_blank');
+      win.document.write(`<html><head><title>Invoice ${currentBill?.bill_no}</title>
+        <style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;}
+        th,td{padding:8px;border:1px solid #ccc;}@media print{body{margin:0;padding:15mm;}}</style>
+        </head><body onload="window.print();window.close();">${content}
+        <div style="margin-top:60px;text-align:center;font-size:12px;border-top:1px solid #ccc;padding-top:16px;">
+          Thank you for your business!<br>System generated invoice. No signature required.</div>
+        </body></html>`);
+      win.document.close();
+    }
+
+    function pdfInvoice() {
+      if (!currentBill || !window.jspdf) return toast('error', 'PDF Engine Error');
+      toast('info', 'Generating PDF...');
+      try {
+        const doc = new window.jspdf.jsPDF();
+        const b = currentBill;
+        doc.setFontSize(24);
+        doc.text(shopSettings?.shop_name || 'MINYARA', 105, 20, { align: 'center' });
+        doc.setFontSize(10);
+        if (shopSettings?.shop_tagline) doc.text(shopSettings.shop_tagline, 105, 28, { align: 'center' });
+        doc.line(14, 44, 196, 44);
+        doc.setFontSize(11);
+        doc.text('Invoice No: ' + b.bill_no, 14, 50);
+        doc.text('Date: ' + new Date(b.created_at).toLocaleDateString(), 14, 56);
+        doc.text('Bill To: ' + (b.customer_name || 'Walk-in'), 130, 50);
+        const tData = (b.items || []).map(i => [i.product_name, i.qty.toString(), formatCurrency(i.unit_price), formatCurrency(i.total)]);
+        doc.autoTable({ startY: 64, head: [['Item', 'Qty', 'Unit Price', 'Amount']], body: tData, theme: 'striped',
+          headStyles: { fillColor: [79,142,247] }, columnStyles: { 1:{halign:'center'}, 2:{halign:'right'}, 3:{halign:'right'} } });
+        const fy = doc.lastAutoTable.finalY + 10;
+        doc.text(`Subtotal: ${formatCurrency(b.subtotal)}`, 130, fy);
+        doc.text(`Discount: ${formatCurrency(b.discount)}`, 130, fy+6);
+        doc.setFontSize(14);
+        doc.text(`Total: ${formatCurrency(b.total)}`, 130, fy+16);
+        doc.save(`MINYARA_${b.bill_no}.pdf`);
+      } catch (e) { toast('error', 'PDF Error', e.message); }
+    }
+
+    function exportBills() {
+      if (!bills.length) return toast('warning', 'No Data', 'No bills to export');
+      const headers = ['Bill No', 'Date', 'Customer', 'Phone', 'Payment', 'Status', 'Subtotal', 'Discount', 'Total'];
+      const rows = bills.map(b => [
+        b.bill_no, formatDateTime(b.created_at),
+        b.customer_name || 'Walk-in', b.customer_phone || '',
+        b.payment_method, b.status,
+        b.subtotal || '', b.discount || '', b.total
+      ]);
+      exportToCSV(headers, rows, `MINYARA_Bills_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadBills();
+      document.getElementById('searchInput').addEventListener('input', debounce(loadBills, 400));
+    });
+  </script>
+</body>
+
+</html>

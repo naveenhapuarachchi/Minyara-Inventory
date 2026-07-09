@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minyara Categories — Manage product categories with colorful cards, icons and quick inline editing.">
+  <title>Minyara Inventory | Categories</title>
+  <link rel="stylesheet" href="css/style.css?v=4">
+</head>
+<body>
+  <div class="layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle Sidebar">‹</button>
+      <a href="index.html" class="sidebar-brand">
+        <img src="assets/logo.png" alt="Minyara Logo" id="sidebarLogo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhNmZmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TTwvdGV4dD48L3N2Zz4='">
+        <div class="sidebar-brand-text"><div class="sidebar-brand-name">MINYARA</div><div class="sidebar-brand-sub">Inventory &amp; Billing</div></div>
+      </a>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main Menu</div>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-link-text">Dashboard</span></a>
+        <a href="analytics.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-link-text">Analytics &amp; Reports</span></a>
+        <a href="billing.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-link-text">POS / Billing</span></a>
+        <a href="bills.html" class="nav-link">
+          <span class="nav-icon">📋</span><span class="nav-link-text">Bills History</span>
+          <span class="nav-badge orange" id="navBadgeBills" style="display:none">0</span>
+        </a>
+        <div class="nav-section-label">Management</div>
+        <a href="inventory.html" class="nav-link">
+          <span class="nav-icon">📦</span><span class="nav-link-text">Inventory / Stock</span>
+          <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
+        </a>
+        <a href="categories.html" class="nav-link active"><span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <div class="nav-section-label">System</div>
+        <a href="settings.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-time">
+          <div class="sidebar-clock" id="sidebarTime">...</div>
+          <div class="sidebar-date" id="sidebarDate">...</div>
+        </div>
+        <div class="sidebar-dark-toggle">
+          <span class="sidebar-dark-toggle-label">🌙 Dark Mode</span>
+          <label class="dark-toggle-switch"><input type="checkbox" id="darkModeToggle"><span class="dark-toggle-slider"></span></label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top-header">
+        <div class="page-title">
+          <h1>Categories</h1>
+          <p>Organize products into colorful categories • <span style="font-size:11px;font-family:monospace;opacity:0.5">Alt+N to add</span></p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="toggleView()" id="viewToggleBtn" title="Toggle View">⊞ Card View</button>
+          <button class="btn btn-primary" onclick="openCatModal()" id="addCatBtn">+ Add Category</button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- Card View (default) -->
+        <div id="categoryCardView" class="category-grid" style="min-height:200px;">
+          <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🏷️</div><h3>Loading categories...</h3></div>
+        </div>
+
+        <!-- Table View (hidden by default) -->
+        <div id="categoryTableView" style="display:none;">
+          <div class="card">
+            <div class="table-wrapper">
+              <table id="catTable">
+                <thead>
+                  <tr><th>#</th><th>Icon</th><th>Category Name</th><th>Description</th><th>Products</th><th style="text-align:right">Actions</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══ Category Modal ═══ -->
+  <div id="catModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="catModalTitle">Add Category</div>
+        <button class="modal-close" onclick="closeModal('catModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="catForm">
+          <input type="hidden" id="catId">
+          <div class="form-group">
+            <label class="form-label">Category Icon (Emoji)</label>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+              <input type="text" id="catIcon" class="form-control" maxlength="4" placeholder="🏷️" style="width:80px;font-size:20px;text-align:center;">
+              <span style="font-size:12px;color:var(--text-muted)">Type or pick an emoji</span>
+            </div>
+            <!-- Quick Icon Picker -->
+            <div class="icon-picker-grid">
+              ${['🏷️','📦','✏️','🖊️','📐','🖇️','📎','📌','📒','📓','📚','📏','🖋️','🖌️','🎨','✂️','🗂️','🗃️','🗄️',
+                '📝','💼','🧴','🧹','🪣','🔑','🔒','💡','🔧','🔨','⚙️','🖥️','📱','🎯','🏠','🛒','🛍️','🎁','💰','💳'].map(e =>
+                `<button type="button" class="icon-picker-btn" onclick="selectIcon('${e}')">${e}</button>`).join('')}
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category Name *</label>
+            <input type="text" id="catName" class="form-control" required placeholder="e.g. Pens &amp; Pencils">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description (Optional)</label>
+            <textarea id="catDesc" class="form-control" placeholder="Brief description..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('catModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCategory()">Save Category</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js?v=4"></script>
+  <script src="js/api.js?v=4"></script>
+  <script>
+    let categories = [];
+    let currentView = 'card'; // 'card' | 'table'
+
+    // Gradient palette for cards
+    const CAT_GRADIENTS = [
+      'var(--grad-blue)', 'var(--grad-purple)', 'var(--grad-green)',
+      'var(--grad-orange)', 'var(--grad-teal)', 'var(--grad-gold)', 'var(--grad-pink)'
+    ];
+
+    function selectIcon(emoji) {
+      document.getElementById('catIcon').value = emoji;
+      document.querySelectorAll('.icon-picker-btn').forEach(b => b.classList.toggle('selected', b.textContent === emoji));
+    }
+
+    function toggleView() {
+      currentView = currentView === 'card' ? 'table' : 'card';
+      document.getElementById('categoryCardView').style.display = currentView === 'card' ? 'grid' : 'none';
+      document.getElementById('categoryTableView').style.display = currentView === 'table' ? 'block' : 'none';
+      document.getElementById('viewToggleBtn').textContent = currentView === 'card' ? '☰ Table View' : '⊞ Card View';
+    }
+
+    async function loadCategories() {
+      try {
+        categories = await CategoriesAPI.list();
+        renderCards();
+        renderTable();
+      } catch(e) { toast('error','Failed to load',e.message); }
+    }
+
+    function renderCards() {
+      const grid = document.getElementById('categoryCardView');
+      if (!categories.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+          <div class="empty-icon">🏷️</div>
+          <h3>No categories yet</h3>
+          <p>Add your first category to get started</p>
+          <button class="btn btn-primary" onclick="openCatModal()">+ Add Category</button>
+        </div>`;
+        return;
+      }
+      grid.innerHTML = categories.map((c, i) => {
+        const grad = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
+        const icon = c.icon || '🏷️';
+        return `
+          <div class="category-card" style="--card-grad:${grad}">
+            <div class="category-card-icon" id="icon-${c.id}">${icon}</div>
+            <div class="category-card-name" id="name-${c.id}">${c.name}</div>
+            <div class="category-card-count">${c.product_count || 0} items</div>
+            <div class="category-card-actions">
+              <button class="btn btn-sm btn-ghost" onclick="startInlineEdit(${c.id})" title="Edit">✏️ Edit</button>
+              <button class="btn btn-sm btn-ghost" onclick="delCat(${c.id})" style="color:var(--danger)" title="Delete">🗑️</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderTable() {
+      const tb = document.querySelector('#catTable tbody');
+      if (!categories.length) {
+        tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;">No categories found.</td></tr>`;
+        return;
+      }
+      tb.innerHTML = categories.map(c => `
+        <tr>
+          <td style="color:var(--text-muted)">#${c.id}</td>
+          <td style="font-size:20px">${c.icon || '🏷️'}</td>
+          <td style="font-weight:600">${c.name}</td>
+          <td style="color:var(--text-muted)">${c.description || '-'}</td>
+          <td><span class="badge badge-info">${c.product_count || 0} items</span></td>
+          <td style="text-align:right">
+            <button class="btn btn-sm btn-ghost" onclick="openCatModal(${c.id})">✏️</button>
+            <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="delCat(${c.id})">🗑️</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    function startInlineEdit(id) {
+      // Open modal instead of inline editing for reliability
+      openCatModal(id);
+    }
+
+    function openCatModal(id=null) {
+      document.getElementById('catForm').reset();
+      document.getElementById('catId').value = id||'';
+      document.getElementById('catModalTitle').textContent = id ? 'Edit Category' : 'Add Category';
+      if (id) {
+        const cat = categories.find(c => c.id == id);
+        if (cat) {
+          document.getElementById('catName').value = cat.name;
+          document.getElementById('catDesc').value = cat.description||'';
+          document.getElementById('catIcon').value = cat.icon||'🏷️';
+          selectIcon(cat.icon || '🏷️');
+        }
+      } else {
+        document.getElementById('catIcon').value = '';
+        document.querySelectorAll('.icon-picker-btn').forEach(b => b.classList.remove('selected'));
+      }
+      openModal('catModal');
+      setTimeout(() => document.getElementById('catName').focus(), 100);
+    }
+
+    window.editCat = openCatModal;
+
+    async function saveCategory() {
+      const id = document.getElementById('catId').value;
+      const data = {
+        name: document.getElementById('catName').value.trim(),
+        description: document.getElementById('catDesc').value.trim(),
+        icon: document.getElementById('catIcon').value.trim() || '🏷️'
+      };
+      if (!data.name) return toast('warning','Validation','Name is required');
+      try {
+        if (id) { await CategoriesAPI.update(id,data); toast('success','Updated','Category updated'); }
+        else { await CategoriesAPI.create(data); toast('success','Created','Category added'); }
+        closeModal('catModal');
+        loadCategories();
+      } catch(e) { toast('error','Error',e.message); }
+    }
+
+    async function delCat(id) {
+      if (await confirmAction('Are you sure you want to delete this category? Products assigned to it will become uncategorized.', 'Delete Category', '🗑️ Delete', 'danger')) {
+        try { await CategoriesAPI.delete(id); toast('success','Deleted','Category deleted'); loadCategories(); }
+        catch(e) { toast('error','Error',e.message); }
+      }
+    }
+
+    // Alt+N shortcut to add category
+    document.addEventListener('keydown', e => {
+      if (e.altKey && e.key === 'n') { e.preventDefault(); openCatModal(); }
+    });
+
+    document.addEventListener('DOMContentLoaded', loadCategories);
+  </script>
+</body>
+</html>

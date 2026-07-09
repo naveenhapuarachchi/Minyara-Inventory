@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minyara Settings — Manage shop details, database backups, invoice templates and security.">
+  <title>Minyara Inventory | Settings</title>
+  <link rel="stylesheet" href="css/style.css?v=4">
+</head>
+<body>
+  <div class="layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle Sidebar">‹</button>
+      <a href="index.html" class="sidebar-brand">
+        <img src="assets/logo.png" alt="Minyara" id="sidebarLogo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhNmZmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TTwvdGV4dD48L3N2Zz4='">
+        <div class="sidebar-brand-text"><div class="sidebar-brand-name">MINYARA</div><div class="sidebar-brand-sub">Inventory &amp; Billing</div></div>
+      </a>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main Menu</div>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-link-text">Dashboard</span></a>
+        <a href="analytics.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-link-text">Analytics &amp; Reports</span></a>
+        <a href="billing.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-link-text">POS / Billing</span></a>
+        <a href="bills.html" class="nav-link">
+          <span class="nav-icon">📋</span><span class="nav-link-text">Bills History</span>
+          <span class="nav-badge orange" id="navBadgeBills" style="display:none">0</span>
+        </a>
+        <div class="nav-section-label">Management</div>
+        <a href="inventory.html" class="nav-link">
+          <span class="nav-icon">📦</span><span class="nav-link-text">Inventory / Stock</span>
+          <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
+        </a>
+        <a href="categories.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <div class="nav-section-label">System</div>
+        <a href="settings.html" class="nav-link active"><span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-time">
+          <div class="sidebar-clock" id="sidebarTime">...</div>
+          <div class="sidebar-date" id="sidebarDate">...</div>
+        </div>
+        <div class="sidebar-dark-toggle">
+          <span class="sidebar-dark-toggle-label">🌙 Dark Mode</span>
+          <label class="dark-toggle-switch"><input type="checkbox" id="darkModeToggle"><span class="dark-toggle-slider"></span></label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top-header">
+        <div class="page-title">
+          <h1>System Settings</h1>
+          <p>Customize shop details, styling, and system preferences</p>
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="saveSettings()" id="btnSaveMain">💾 Save All Changes</button>
+        </div>
+      </header>
+
+      <div class="page-content" style="max-width:860px;">
+        <div class="settings-tabs">
+          <button class="settings-tab-btn active" data-tab="tab-general" onclick="switchTab('tab-general')">🏪 Shop Info</button>
+          <button class="settings-tab-btn" data-tab="tab-invoice" onclick="switchTab('tab-invoice')">🧾 Invoice Setup</button>
+          <button class="settings-tab-btn" data-tab="tab-appearance" onclick="switchTab('tab-appearance')">🎨 Appearance</button>
+          <button class="settings-tab-btn" data-tab="tab-security" onclick="switchTab('tab-security')">🔒 Security</button>
+          <button class="settings-tab-btn" data-tab="tab-backup" onclick="switchTab('tab-backup')">💾 Backup</button>
+        </div>
+
+        <form id="settingsForm">
+          <!-- 1. Shop Info -->
+          <div class="settings-panel active" id="tab-general">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Shop Details</div></div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Shop Name</label>
+                    <input type="text" id="shopName" class="form-control" required placeholder="e.g. Minyara Tech Shop">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Tagline (Optional)</label>
+                    <input type="text" id="shopTagline" class="form-control" placeholder="A moments of technology">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Shop Address</label>
+                  <input type="text" id="shopAddress" class="form-control" placeholder="e.g. 123 Main St, City">
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Contact Phone</label>
+                    <input type="text" id="shopPhone" class="form-control" placeholder="+94 77 XXX XXXX">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Support Email</label>
+                    <input type="email" id="shopEmail" class="form-control" placeholder="support@minyara.com">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Invoice Setup -->
+          <div class="settings-panel" id="tab-invoice">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Billing & Invoice Configuration</div></div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Currency Symbol</label>
+                    <input type="text" id="currency" class="form-control" value="Rs. " placeholder="e.g. $ or Rs.">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Bill Number Prefix</label>
+                    <input type="text" id="billPrefix" class="form-control" value="INV-" placeholder="e.g. INV-">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Invoice Footer Message</label>
+                  <textarea id="invoiceFooter" class="form-control" placeholder="Thank you for your business! System generated invoice. No signature required."></textarea>
+                </div>
+                
+                <div style="background:var(--bg-table-row-alt);padding:16px;border-radius:var(--radius-sm);border:1px dashed var(--border);margin-top:20px;">
+                  <div style="font-weight:700;margin-bottom:12px;color:var(--text-primary)">Logo Upload (A4 Print Header)</div>
+                  <div class="image-upload-wrapper" style="margin-top:0;background:var(--bg-card);border:2px dashed #c4d2e8;">
+                    <input type="file" id="logoUpload" accept="image/*" onchange="previewLogo(this)">
+                    <img id="logoPreview" class="image-upload-preview" style="object-fit:contain;background:transparent;">
+                    <div class="image-upload-placeholder" id="logoPlaceholder">
+                      <div class="icon">🖼️</div><div>Upload Logo (PNG format recommended)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Appearance -->
+          <div class="settings-panel" id="tab-appearance">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Theme & Styling</div></div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label class="form-label" style="font-size:14px;">Default Base Theme</label>
+                  <div style="display:flex;gap:12px;margin-top:10px;">
+                    <label style="flex:1;border:2px solid var(--border);padding:16px;border-radius:12px;cursor:pointer;text-align:center;transition:all var(--tr-fast)" id="tLight">
+                      <input type="radio" name="baseTheme" value="light" style="display:none" onchange="setBaseThemeUI('light')">
+                      <div style="font-size:32px;margin-bottom:8px">☀️</div><div style="font-weight:700">Light Mode</div>
+                    </label>
+                    <label style="flex:1;border:2px solid var(--border);padding:16px;border-radius:12px;cursor:pointer;text-align:center;transition:all var(--tr-fast)" id="tDark">
+                      <input type="radio" name="baseTheme" value="dark" style="display:none" onchange="setBaseThemeUI('dark')">
+                      <div style="font-size:32px;margin-bottom:8px">🌙</div><div style="font-weight:700">Dark Mode</div>
+                    </label>
+                  </div>
+                  <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">(Can also be temporarily toggled via sidebar button)</p>
+                </div>
+
+                <div class="form-group" style="margin-top:32px;">
+                  <label class="form-label" style="font-size:14px;">Brand Accent Color</label>
+                  <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Changes button and highlight colors application-wide.</p>
+                  <div class="accent-options">
+                    <div class="accent-option" style="background:#1a6ffb" onclick="setAccent('#1a6ffb')" data-color="#1a6ffb"></div>
+                    <div class="accent-option" style="background:#6366f1" onclick="setAccent('#6366f1')" data-color="#6366f1"></div>
+                    <div class="accent-option" style="background:#8b5cf6" onclick="setAccent('#8b5cf6')" data-color="#8b5cf6"></div>
+                    <div class="accent-option" style="background:#f43f5e" onclick="setAccent('#f43f5e')" data-color="#f43f5e"></div>
+                    <div class="accent-option" style="background:#f97316" onclick="setAccent('#f97316')" data-color="#f97316"></div>
+                    <div class="accent-option" style="background:#10b981" onclick="setAccent('#10b981')" data-color="#10b981"></div>
+                    <div class="accent-option" style="background:#0ea5e9" onclick="setAccent('#0ea5e9')" data-color="#0ea5e9"></div>
+                    <div class="accent-option" style="background:#334155" onclick="setAccent('#334155')" data-color="#334155"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Security -->
+          <div class="settings-panel" id="tab-security">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Application Lock</div></div>
+              <div class="card-body">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-sm);margin-bottom:20px;">
+                  <div>
+                    <div style="font-weight:800;color:var(--text-primary);display:flex;gap:8px;font-size:14px;">🔒 Ask for PIN on App Start</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Require a 4-digit PIN every time the inventory app is opened.</div>
+                  </div>
+                  <label class="dark-toggle-switch">
+                    <input type="checkbox" id="pinEnabledWrap" onchange="togglePinSetup(this.checked)">
+                    <span class="dark-toggle-slider" style="background:#ccc"></span>
+                  </label>
+                </div>
+
+                <div id="pinSetupArea" style="display:none;animation:slideIn 0.3s ease;">
+                  <div class="form-group" style="max-width:300px;">
+                    <label class="form-label">Set 4-Digit PIN code</label>
+                    <input type="password" id="pinCode" class="form-control" maxlength="4" style="font-size:24px;letter-spacing:12px;text-align:center" placeholder="••••">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Backup -->
+          <div class="settings-panel" id="tab-backup">
+            <div class="card border-primary">
+              <div class="card-header" style="background:var(--grad-blue)"><div class="card-title" style="color:#fff">💾 Database Management</div></div>
+              <div class="card-body" style="text-align:center;padding:40px 20px;">
+                <div style="font-size:54px;margin-bottom:16px;">📥</div>
+                <h3 style="font-size:18px;font-weight:800;color:var(--text-primary);margin-bottom:8px;">Download Full SQL Backup</h3>
+                <p style="color:var(--text-muted);font-size:13px;max-width:500px;margin:0 auto 24px;line-height:1.5;">
+                  Create a full robust backup of your database (products, sales, categories). Store this .sql file securely. You can restore it through phpMyAdmin.
+                </p>
+                <button type="button" class="btn btn-primary btn-lg" onclick="downloadBackup()">Download .SQL File</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js?v=4"></script>
+  <script src="js/api.js?v=4"></script>
+  <script>
+    // Extend API
+    window.SettingsAPI = {
+      get: () => apiFetch('settings.php'),
+      save: (data) => apiFetch('settings.php', { method: 'POST', body: data })
+    };
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+      document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+    }
+
+    function setBaseThemeUI(theme) {
+      document.getElementById('tLight').style.borderColor = theme === 'light' ? 'var(--brand-blue)' : 'var(--border)';
+      document.getElementById('tDark').style.borderColor  = theme === 'dark'  ? 'var(--brand-blue)' : 'var(--border)';
+    }
+
+    function setAccent(hex) {
+      document.documentElement.style.setProperty('--brand-blue', hex);
+      const isDark = document.documentElement.dataset.theme==='dark';
+      document.documentElement.style.setProperty('--grad-blue', `linear-gradient(135deg, ${hex}, ${shadeColor(hex,isDark?20:-20)})`);
+      document.querySelectorAll('.accent-option').forEach(o => o.classList.toggle('selected', o.dataset.color === hex));
+      localStorage.setItem('minyara_accent', hex);
+    }
+
+    // Helper to darken/lighten hex
+    function shadeColor(color, percent) {
+      let R = parseInt(color.substring(1,3),16), G = parseInt(color.substring(3,5),16), B = parseInt(color.substring(5,7),16);
+      R = parseInt(R * (100 + percent) / 100); G = parseInt(G * (100 + percent) / 100); B = parseInt(B * (100 + percent) / 100);
+      R = (R<255)?R:255; R = Math.round(R); G = (G<255)?G:255; G = Math.round(G); B = (B<255)?B:255; B = Math.round(B);
+      const RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
+      const GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
+      const BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
+      return "#"+RR+GG+BB;
+    }
+
+    function previewLogo(input) {
+      if (input.files && input.files[0]) {
+        const r = new FileReader();
+        r.onload = e => {
+          document.getElementById('logoPreview').src = e.target.result;
+          document.getElementById('logoPreview').style.display='block';
+          document.getElementById('logoPlaceholder').style.display='none';
+          localStorage.setItem('minyara_logo_b64', e.target.result);
+        };
+        r.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function togglePinSetup(show) {
+      document.getElementById('pinSetupArea').style.display = show ? 'block' : 'none';
+      if(show) document.getElementById('pinCode').focus();
+    }
+
+    async function loadSettings() {
+      try {
+        const s = await SettingsAPI.get();
+        document.getElementById('shopName').value = s.shop_name||'';
+        document.getElementById('shopTagline').value = s.shop_tagline||'';
+        document.getElementById('shopAddress').value = s.shop_address||'';
+        document.getElementById('shopPhone').value = s.shop_phone||'';
+        document.getElementById('shopEmail').value = s.shop_email||'';
+        document.getElementById('currency').value = s.currency||'Rs. ';
+        document.getElementById('billPrefix').value = s.bill_prefix||'INV-';
+        document.getElementById('invoiceFooter').value = s.invoice_footer||'';
+
+        const baseTheme = localStorage.getItem('minyara_theme') || 'light';
+        document.querySelector(`input[name="baseTheme"][value="${baseTheme}"]`).checked = true;
+        setBaseThemeUI(baseTheme);
+
+        const currentAccent = localStorage.getItem('minyara_accent') || '#4f8ef7';
+        document.querySelectorAll('.accent-option').forEach(o => o.classList.toggle('selected', o.dataset.color === currentAccent));
+
+        const savedPin = localStorage.getItem('minyara_pin');
+        if (savedPin) {
+          document.getElementById('pinEnabledWrap').checked = true;
+          document.getElementById('pinSetupArea').style.display = 'block';
+          document.getElementById('pinCode').value = savedPin;
+        }
+
+        const logoData = localStorage.getItem('minyara_logo_b64');
+        if (logoData) {
+          document.getElementById('logoPreview').src = logoData;
+          document.getElementById('logoPreview').style.display='block';
+          document.getElementById('logoPlaceholder').style.display='none';
+        }
+      } catch(e) { toast('error','Error',e.message); }
+    }
+
+    async function saveSettings() {
+      const btn = document.getElementById('btnSaveMain');
+      btn.innerHTML = '<span class="spinner"></span> Saving...'; btn.disabled=true;
+      try {
+        const payload = {
+          shop_name: document.getElementById('shopName').value,
+          shop_tagline: document.getElementById('shopTagline').value,
+          shop_address: document.getElementById('shopAddress').value,
+          shop_phone: document.getElementById('shopPhone').value,
+          shop_email: document.getElementById('shopEmail').value,
+          currency: document.getElementById('currency').value,
+          bill_prefix: document.getElementById('billPrefix').value,
+          invoice_footer: document.getElementById('invoiceFooter').value
+        };
+        await SettingsAPI.save(payload);
+
+        // Save theme logic
+        const theme = document.querySelector('input[name="baseTheme"]:checked').value;
+        if (theme !== (localStorage.getItem('minyara_theme')||'light')) {
+          localStorage.setItem('minyara_theme', theme);
+          document.documentElement.setAttribute('data-theme', theme);
+          const chk = document.getElementById('darkModeToggle');
+          if (chk) chk.checked = (theme==='dark');
+        }
+
+        // Save PIN
+        const wantsPin = document.getElementById('pinEnabledWrap').checked;
+        const pinCode = document.getElementById('pinCode').value;
+        if (wantsPin && pinCode.length === 4) { localStorage.setItem('minyara_pin', pinCode); }
+        else if (wantsPin && pinCode.length !== 4) { toast('warning','Invalid PIN','PIN must be exactly 4 digits'); return; }
+        else { localStorage.removeItem('minyara_pin'); }
+
+        localStorage.setItem('minyara_shop_name', payload.shop_name);
+        
+        toast('success','Saved','All settings successfully updated');
+      } catch(e) { toast('error','Save Failed',e.message); }
+      finally { btn.innerHTML='💾 Save All Changes'; btn.disabled=false; }
+    }
+
+    function downloadBackup() { window.location.href = 'api/backup.php'; }
+
+    document.addEventListener('DOMContentLoaded', loadSettings);
+  </script>
+</body>
+</html>

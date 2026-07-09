@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minyara Inventory Dashboard — Real-time shop analytics, sales KPIs, low stock alerts and revenue tracking.">
+  <title>Minyara Inventory | Dashboard</title>
+  <link rel="stylesheet" href="css/style.css?v=5">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle Sidebar (Alt+[)">‹</button>
+      <a href="index.html" class="sidebar-brand">
+        <img src="assets/logo.png" alt="Minyara Logo" id="sidebarLogo"
+          onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhNmZmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TTwvdGV4dD48L3N2Zz4='">
+        <div class="sidebar-brand-text">
+          <div class="sidebar-brand-name">MINYARA</div>
+          <div class="sidebar-brand-sub">Inventory &amp; Billing</div>
+        </div>
+      </a>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main Menu</div>
+        <a href="index.html" class="nav-link active" title="Dashboard (Alt+D)">
+          <span class="nav-icon">📊</span>
+          <span class="nav-link-text">Dashboard</span>
+          <span style="font-size:9px;opacity:0.4;font-family:monospace">Alt+D</span>
+        </a>
+        <a href="analytics.html" class="nav-link" title="Analytics (Alt+A)">
+          <span class="nav-icon">📈</span>
+          <span class="nav-link-text">Analytics &amp; Reports</span>
+          <span style="font-size:9px;opacity:0.4;font-family:monospace">Alt+A</span>
+        </a>
+        <a href="billing.html" class="nav-link" title="POS Billing (Alt+B)">
+          <span class="nav-icon">🧾</span>
+          <span class="nav-link-text">POS / Billing</span>
+          <span style="font-size:9px;opacity:0.4;font-family:monospace">Alt+B</span>
+        </a>
+        <a href="bills.html" class="nav-link" title="Bills History (Alt+H)">
+          <span class="nav-icon">📋</span>
+          <span class="nav-link-text">Bills History</span>
+          <span class="nav-badge orange" id="navBadgeBills" style="display:none">0</span>
+        </a>
+
+        <div class="nav-section-label">Management</div>
+        <a href="inventory.html" class="nav-link" title="Inventory (Alt+I)">
+          <span class="nav-icon">📦</span>
+          <span class="nav-link-text">Inventory / Stock</span>
+          <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
+        </a>
+        <a href="categories.html" class="nav-link" title="Categories (Alt+C)">
+          <span class="nav-icon">🏷️</span>
+          <span class="nav-link-text">Categories</span>
+        </a>
+
+        <div class="nav-section-label">System</div>
+        <a href="settings.html" class="nav-link" title="Settings (Alt+S)">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-link-text">Settings</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-time">
+          <div class="sidebar-clock" id="sidebarTime">12:00 AM</div>
+          <div class="sidebar-date" id="sidebarDate">Mon, Jan 1, 2026</div>
+        </div>
+        <div class="sidebar-dark-toggle">
+          <span class="sidebar-dark-toggle-label">🌙 Dark Mode</span>
+          <label class="dark-toggle-switch">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="dark-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══ Main Content ═══ -->
+    <main class="main">
+      <header class="top-header">
+        <div class="page-title">
+          <h1>Dashboard Overview</h1>
+          <p id="headerGreeting">Real-time shop analytics and tracking</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="openGlobalSearch()" id="globalSearchBtn" title="Global Search (Ctrl+K)"
+            style="gap:6px;padding:7px 12px;font-size:12px;font-family:monospace;">
+            🔍 <span style="font-size:10px;opacity:0.6">Ctrl+K</span>
+          </button>
+          <div style="position:relative" id="notifWrapper">
+            <button class="notif-btn" onclick="toggleNotifPanel()" id="notifBell">🔔
+              <span class="notif-count" id="headerNotifCount" style="display:none">0</span>
+            </button>
+            <div class="notif-panel" id="notifPanel">
+              <div class="notif-panel-header">
+                🔔 Notifications
+                <button class="btn btn-sm btn-ghost" onclick="document.getElementById('notifPanel').classList.remove('open')" style="padding:2px 6px">✕</button>
+              </div>
+              <div id="notifPanelItems">
+                <div class="notif-item"><span class="notif-item-icon">⏳</span><div><div class="notif-item-title">Loading...</div></div></div>
+              </div>
+            </div>
+          </div>
+          <span class="hero-badge">⚡ Pro Version</span>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- ── Revenue KPIs ── -->
+        <div class="section-heading">💸 Revenue Tracking</div>
+        <div class="kpi-grid" id="revenueKpiGrid">
+          <div class="kpi-card blue">
+            <div class="kpi-body">
+              <div class="kpi-label">Today's Sales</div>
+              <div class="kpi-value" id="kpiSalesToday">Rs. 0.00</div>
+              <div class="kpi-sub" id="kpiSubToday">—</div>
+            </div>
+            <div class="kpi-icon">💸</div>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-body">
+              <div class="kpi-label">This Week</div>
+              <div class="kpi-value" id="kpiSalesWeek">Rs. 0.00</div>
+            </div>
+            <div class="kpi-icon">📅</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-body">
+              <div class="kpi-label">This Month</div>
+              <div class="kpi-value" id="kpiSalesMonth">Rs. 0.00</div>
+            </div>
+            <div class="kpi-icon">📊</div>
+          </div>
+          <div class="kpi-card orange">
+            <div class="kpi-body">
+              <div class="kpi-label">This Year</div>
+              <div class="kpi-value" id="kpiSalesYear">Rs. 0.00</div>
+            </div>
+            <div class="kpi-icon">🏆</div>
+          </div>
+        </div>
+
+        <!-- ── Daily Revenue Chart ── -->
+        <div class="card" style="margin-top:24px;">
+          <div class="card-header">
+            <div class="card-title">📈 Daily Revenue Progress</div>
+            <div style="display:flex;gap:10px;">
+              <select id="dailyChartMonth" class="form-control" style="width:auto;padding:4px 8px;font-size:13px;height:32px;" onchange="loadDailyChart()">
+                <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+              </select>
+              <select id="dailyChartYear" class="form-control" style="width:auto;padding:4px 8px;font-size:13px;height:32px;" onchange="loadDailyChart()"></select>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrap" style="height:280px;width:100%;">
+              <canvas id="revenueLineChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Inventory KPIs ── -->
+        <div class="section-heading" style="margin-top:28px;">📦 Inventory Overview</div>
+        <div class="kpi-grid">
+          <div class="kpi-card green">
+            <div class="kpi-body">
+              <div class="kpi-label">Total Stock Value</div>
+              <div class="kpi-value" id="kpiStockValue">Rs. 0.00</div>
+            </div>
+            <div class="kpi-icon">📈</div>
+          </div>
+          <div class="kpi-card orange">
+            <div class="kpi-body">
+              <div class="kpi-label">Low Stock Alerts</div>
+              <div class="kpi-value" id="kpiLowStock">0</div>
+            </div>
+            <div class="kpi-icon">⚠️</div>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-body">
+              <div class="kpi-label">Active Products</div>
+              <div class="kpi-value" id="kpiProducts">0</div>
+            </div>
+            <div class="kpi-icon">📦</div>
+          </div>
+          <div class="kpi-card blue">
+            <div class="kpi-body">
+              <div class="kpi-label">Bills Created Today</div>
+              <div class="kpi-value" id="kpiTodayBills">0</div>
+            </div>
+            <div class="kpi-icon">🧾</div>
+          </div>
+        </div>
+
+        <!-- ── Manual Analytics ── -->
+        <div class="section-heading" style="margin-top:32px;">
+          📊 Manual Sales &amp; Analytics Tracking
+          <span style="background:var(--grad-blue);color:#fff;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:800;letter-spacing:0.5px;margin-left:4px;">PRO</span>
+        </div>
+
+        <div class="card" style="margin-bottom:24px;">
+          <div class="card-body" style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;">
+            <div class="form-group" style="margin:0;min-width:150px;">
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block;">Filter Type</label>
+              <select id="mFilterType" class="form-control" onchange="updateMFilterInput()">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly" selected>Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div class="form-group" id="mFilterInputGroup" style="margin:0;min-width:200px;"></div>
+            <div style="flex:1;display:flex;justify-content:flex-end;">
+              <button class="btn btn-primary" onclick="fetchManualAnalytics()">
+                <span class="nav-icon">📊</span> Analyze Sales
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtered Results -->
+        <div id="mAnalyticsResults" style="display:none;animation:slideIn 0.3s ease-out;">
+          <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:24px;">
+            <div class="kpi-card purple">
+              <div class="kpi-body">
+                <div class="kpi-label">Period Revenue</div>
+                <div class="kpi-value" id="mRev">Rs. 0.00</div>
+              </div>
+              <div class="kpi-icon">💰</div>
+            </div>
+            <div class="kpi-card blue">
+              <div class="kpi-body">
+                <div class="kpi-label">Bills Generated</div>
+                <div class="kpi-value" id="mBills">0</div>
+              </div>
+              <div class="kpi-icon">🧾</div>
+            </div>
+          </div>
+          <div class="dash-panels" style="grid-template-columns:2fr 1fr;">
+            <div class="card">
+              <div class="card-header"><div class="card-title">🗓️ Sales by Day of Week</div></div>
+              <div class="card-body">
+                <div class="chart-wrap" style="height:320px;width:100%;"><canvas id="mChart"></canvas></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div class="card-title">🛍️ Items Sold List</div></div>
+              <div class="card-body" style="padding:0">
+                <div class="table-wrapper" style="border:none;border-radius:0;max-height:320px;overflow-y:auto;">
+                  <table id="mItemsTable">
+                    <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Sales (Rs)</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Dashboard Panels ── -->
+        <div class="dash-panels" style="margin-top:24px;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📉 Low Stock Items</div>
+              <a href="inventory.html" class="btn btn-sm btn-ghost">View All →</a>
+            </div>
+            <div class="card-body" style="padding:0">
+              <div class="table-wrapper" style="border:none;border-radius:0;">
+                <table id="lowStockTable">
+                  <thead><tr><th>Product Name</th><th>Category</th><th>Stock</th><th>Min Limit</th></tr></thead>
+                  <tbody><tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🔖 Top Selling Products</div>
+            </div>
+            <div class="card-body" style="padding:12px 16px;" id="topProductsLeaderboard">
+              <div style="text-align:center;color:var(--text-muted);padding:20px;">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js?v=5"></script>
+  <script src="js/api.js?v=5"></script>
+  <script>
+    let dashboardData = null;
+    let revChart = null;
+    let lineChartInstance = null;
+
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.font.family = 'Inter';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
+    Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
+    Chart.defaults.plugins.tooltip.bodyColor = '#94a3b8';
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.padding = 10;
+
+    function updateMFilterInput() {
+      const type = document.getElementById('mFilterType').value;
+      const group = document.getElementById('mFilterInputGroup');
+      const today = new Date();
+      let html = '';
+      if (type === 'daily') {
+        html = `<label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block;">Select Date</label>
+                <input type="date" id="mFilterValue" class="form-control" value="${today.toISOString().split('T')[0]}">`;
+      } else if (type === 'weekly') {
+        const startOfYear = new Date(today.getFullYear(), 0, 1);
+        const weekNo = Math.ceil(((today - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+        html = `<label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block;">Select Week</label>
+                <input type="week" id="mFilterValue" class="form-control" value="${today.getFullYear()}-W${String(weekNo).padStart(2,'0')}">`;
+      } else if (type === 'monthly') {
+        html = `<label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block;">Select Month &amp; Year</label>
+                <input type="month" id="mFilterValue" class="form-control" value="${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}">`;
+      } else if (type === 'yearly') {
+        html = `<label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block;">Select Year</label>
+                <input type="number" id="mFilterValue" class="form-control" min="2000" max="2100" value="${today.getFullYear()}">`;
+      }
+      group.innerHTML = html;
+    }
+
+    async function fetchManualAnalytics() {
+      const type = document.getElementById('mFilterType').value;
+      const val = document.getElementById('mFilterValue').value;
+      if (!val) return toast('warning', 'Missing Value', 'Please select a date/period to analyze');
+      try {
+        document.getElementById('mAnalyticsResults').style.display = 'block';
+        const data = await DashboardAPI.manual(type, val);
+        document.getElementById('mRev').textContent = formatCurrency(data.revenue);
+        document.getElementById('mBills').textContent = data.bills;
+        const tbody = document.querySelector('#mItemsTable tbody');
+        if (!data.items.length) {
+          tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:20px;">No sales in this period.</td></tr>`;
+        } else {
+          tbody.innerHTML = data.items.map(i => `
+            <tr>
+              <td style="font-weight:600">${i.product_name}</td>
+              <td style="text-align:center"><span class="badge badge-success">${i.total_qty}</span></td>
+              <td style="text-align:right;font-weight:700;color:var(--brand-blue)">${formatCurrency(i.total_revenue)}</td>
+            </tr>`).join('');
+        }
+        renderMChart(data.chart);
+        toast('success', 'Analyzed', 'Sales data fetched for selected period', 2000);
+      } catch (e) {
+        toast('error', 'Analytics Error', e.message);
+      }
+    }
+
+    function renderMChart(chartData) {
+      if (revChart) revChart.destroy();
+      if (!chartData || !chartData.length) return;
+      const ctx = document.getElementById('mChart').getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+      gradient.addColorStop(0, 'rgba(139,92,246,0.35)');
+      gradient.addColorStop(1, 'rgba(139,92,246,0.02)');
+      revChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: chartData.map(c => c.label),
+          datasets: [{
+            label: 'Revenue (Rs)',
+            data: chartData.map(c => parseFloat(c.value)),
+            backgroundColor: '#a371f7',
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, border: { display: false } },
+            y: { grid: { color: 'rgba(100,116,139,0.08)' }, border: { display: false }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function renderRevenueLineChart(chartData) {
+      if (lineChartInstance) lineChartInstance.destroy();
+      if (!chartData || !chartData.length) return;
+      const ctx = document.getElementById('revenueLineChart').getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+      gradient.addColorStop(0, 'rgba(79,142,247,0.3)');
+      gradient.addColorStop(1, 'rgba(79,142,247,0.01)');
+      lineChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartData.map(c => c.label),
+          datasets: [{
+            label: 'Daily Revenue (Rs)',
+            data: chartData.map(c => parseFloat(c.value !== undefined ? c.value : c.revenue || 0)),
+            borderColor: '#4f8ef7',
+            backgroundColor: gradient,
+            fill: true, tension: 0.4,
+            pointBackgroundColor: '#ffffff',
+            pointBorderColor: '#4f8ef7',
+            pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 7
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, border: { display: false } },
+            y: { grid: { color: 'rgba(100,116,139,0.08)' }, border: { display: false }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    async function loadDailyChart() {
+      const month = document.getElementById('dailyChartMonth').value;
+      const year  = document.getElementById('dailyChartYear').value;
+      try {
+        const res = await DashboardAPI.dailyChart(month, year);
+        renderRevenueLineChart(res && res.data ? res.data : []);
+      } catch (e) {
+        toast('error', 'Chart Error', e.message || 'Failed to load daily chart');
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const data = await DashboardAPI.stats();
+        dashboardData = data;
+
+        // Animate KPI counters
+        const salesToday = parseFloat(data.sales_today || 0);
+        const salesWeek  = parseFloat(data.sales_week || 0);
+        const salesMonth = parseFloat(data.sales_month || 0);
+        const salesYear  = parseFloat(data.sales_year || 0);
+        const stockVal   = parseFloat(data.stock_value || 0);
+
+        animateCounter(document.getElementById('kpiSalesToday'), salesToday, 'Rs. ', '', 1000);
+        animateCounter(document.getElementById('kpiSalesWeek'),  salesWeek,  'Rs. ', '', 1100);
+        animateCounter(document.getElementById('kpiSalesMonth'), salesMonth, 'Rs. ', '', 1200);
+        animateCounter(document.getElementById('kpiSalesYear'),  salesYear,  'Rs. ', '', 1300);
+        animateCounter(document.getElementById('kpiStockValue'), stockVal,   'Rs. ', '', 1000);
+        animateCounter(document.getElementById('kpiLowStock'),   parseInt(data.low_stock_count || 0),   '', '', 800);
+        animateCounter(document.getElementById('kpiProducts'),   parseInt(data.total_products || 0),    '', '', 800);
+        animateCounter(document.getElementById('kpiTodayBills'), parseInt(data.today_bill_count || 0), '', '', 800);
+
+        // Set greeting
+        initGreeting(data.shop_name);
+
+        // Low Stock Table
+        const tbLow = document.querySelector('#lowStockTable tbody');
+        if (!data.low_stock_items.length) {
+          tbLow.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No items are low on stock 🎉</td></tr>`;
+        } else {
+          tbLow.innerHTML = data.low_stock_items.map(p => `
+            <tr>
+              <td style="font-weight:600">${p.name}</td>
+              <td><span class="badge badge-muted">${p.category || '-'}</span></td>
+              <td>${stockBadge(p.stock_qty, p.min_stock)}</td>
+              <td>${p.min_stock}</td>
+            </tr>`).join('');
+        }
+
+        // Top Products — Leaderboard style
+        const lb = document.getElementById('topProductsLeaderboard');
+        if (!data.top_products.length) {
+          lb.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:20px;">No sales data yet</div>`;
+        } else {
+          const maxVal = Math.max(...data.top_products.map(p => parseInt(p.total_sold)));
+          lb.innerHTML = data.top_products.map((p, i) => {
+            const rankCls = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : 'rn';
+            const pct = maxVal > 0 ? Math.round((parseInt(p.total_sold) / maxVal) * 100) : 0;
+            return `
+              <div class="leaderboard-item">
+                <div class="leaderboard-rank ${rankCls}">${i + 1}</div>
+                <div class="leaderboard-name">${p.product_name}</div>
+                <div class="leaderboard-bar-wrap">
+                  <div class="leaderboard-bar-bg"><div class="leaderboard-bar-fill" style="width:${pct}%"></div></div>
+                </div>
+                <div class="leaderboard-val">${p.total_sold} sold</div>
+              </div>`;
+          }).join('');
+        }
+
+        // Init Manual Analytics filter inputs
+        updateMFilterInput();
+
+        // Daily chart dropdowns
+        const nowD = new Date();
+        const currentYear = nowD.getFullYear();
+        const yearSelect = document.getElementById('dailyChartYear');
+        yearSelect.innerHTML = '';
+        for (let y = currentYear - 5; y <= currentYear + 1; y++) {
+          const opt = document.createElement('option');
+          opt.value = y; opt.textContent = y;
+          yearSelect.appendChild(opt);
+        }
+        document.getElementById('dailyChartMonth').value = nowD.getMonth() + 1;
+        yearSelect.value = currentYear;
+        loadDailyChart();
+
+        // Show initial analytics from dashboard data
+        document.getElementById('mAnalyticsResults').style.display = 'block';
+        const weekRevenue = (data.chart_daily || []).reduce((s, d) => s + parseFloat(d.value || 0), 0);
+        document.getElementById('mRev').textContent = formatCurrency(weekRevenue);
+        document.getElementById('mBills').textContent = data.today_bill_count;
+        renderMChart(data.chart_daily || []);
+
+        // Weekly items sold
+        try {
+          const weekData = await DashboardAPI.manual('weekly', '');
+          const tbody = document.querySelector('#mItemsTable tbody');
+          if (!weekData.items || !weekData.items.length) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:20px;">No sales in this period.</td></tr>`;
+          } else {
+            tbody.innerHTML = weekData.items.map(i => `
+              <tr>
+                <td style="font-weight:600">${i.product_name}</td>
+                <td style="text-align:center"><span class="badge badge-success">${i.total_qty}</span></td>
+                <td style="text-align:right;font-weight:700;color:var(--brand-blue)">${formatCurrency(i.total_revenue)}</td>
+              </tr>`).join('');
+          }
+        } catch(ignored) {}
+
+      } catch (e) {
+        toast('error', 'Dashboard Error', e.message);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDashboard();
+      // Update page greeting
+      const h = new Date().getHours();
+      const greet = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+      const name = localStorage.getItem('minyara_shop_name') || 'Minyara';
+      document.getElementById('headerGreeting').textContent = `${greet}, ${name}! 👋`;
+    });
+  </script>
+</body>
+
+</html>

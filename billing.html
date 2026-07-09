@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minyara POS — Point of Sale billing system. Create bills, manage cart, print A4 invoices.">
+  <title>Minyara Inventory | POS Billing</title>
+  <link rel="stylesheet" href="css/style.css?v=5">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    /* ── A4 Print for Brother HL-L6200DW ── */
+    @media print {
+      .sidebar, .top-header, .cart-panel, .no-print,
+      .product-panel, .toolbar, .cat-tabs-wrap,
+      .pos-layout > *:first-child { display: none !important; }
+      body { background: white !important; margin: 0 !important; }
+      #printArea {
+        visibility: visible !important;
+        position: static !important;
+        width: 210mm !important;
+        padding: 15mm !important;
+        margin: 0 auto !important;
+        color: #000 !important;
+        background: #fff !important;
+      }
+      .main { margin-left: 0 !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle Sidebar">‹</button>
+      <a href="index.html" class="sidebar-brand">
+        <img src="assets/logo.png" alt="Minyara" id="sidebarLogo"
+          onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhNmZmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TTwvdGV4dD48L3N2Zz4='">
+        <div class="sidebar-brand-text">
+          <div class="sidebar-brand-name">MINYARA</div>
+          <div class="sidebar-brand-sub">Inventory &amp; Billing</div>
+        </div>
+      </a>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main Menu</div>
+        <a href="index.html" class="nav-link" title="Dashboard (Alt+D)">
+          <span class="nav-icon">📊</span><span class="nav-link-text">Dashboard</span></a>
+        <a href="analytics.html" class="nav-link" title="Analytics (Alt+A)">
+          <span class="nav-icon">📈</span><span class="nav-link-text">Analytics &amp; Reports</span></a>
+        <a href="billing.html" class="nav-link active" title="POS Billing (Alt+B)">
+          <span class="nav-icon">🧾</span><span class="nav-link-text">POS / Billing</span></a>
+        <a href="bills.html" class="nav-link" title="Bills History (Alt+H)">
+          <span class="nav-icon">📋</span><span class="nav-link-text">Bills History</span>
+          <span class="nav-badge orange" id="navBadgeBills" style="display:none">0</span></a>
+        <div class="nav-section-label">Management</div>
+        <a href="inventory.html" class="nav-link" title="Inventory (Alt+I)">
+          <span class="nav-icon">📦</span><span class="nav-link-text">Inventory / Stock</span>
+          <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span></a>
+        <a href="categories.html" class="nav-link" title="Categories">
+          <span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <div class="nav-section-label">System</div>
+        <a href="settings.html" class="nav-link" title="Settings (Alt+S)">
+          <span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-time">
+          <div class="sidebar-clock" id="sidebarTime">...</div>
+          <div class="sidebar-date" id="sidebarDate">...</div>
+        </div>
+        <div class="sidebar-dark-toggle">
+          <span class="sidebar-dark-toggle-label">🌙 Dark Mode</span>
+          <label class="dark-toggle-switch">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="dark-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top-header no-print">
+        <div class="page-title">
+          <h1>Point of Sale (POS)</h1>
+          <p>Create new bills and deduct stock • <span style="font-family:monospace;font-size:11px;opacity:0.6">Enter=Add • ESC=Clear • Alt+C=Clear Cart</span></p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="custName" class="form-control" placeholder="Customer Name (Optional)" style="width:200px">
+          <input type="text" id="custPhone" class="form-control" placeholder="Phone Number" style="width:160px">
+          <button class="btn btn-ghost btn-sm" onclick="openGlobalSearch()" title="Global Search (Ctrl+K)" style="font-size:12px;font-family:monospace">🔍 Ctrl+K</button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <div class="pos-layout">
+          <!-- Left: Product Search -->
+          <div class="product-panel">
+            <!-- Search + Category Filter Toolbar -->
+            <div class="toolbar no-print" style="background:var(--bg-card);padding:16px;border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:12px;">
+              <div class="search-bar" style="max-width:380px">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="form-control"
+                  placeholder="Search product by name or SKU (Enter to add first match)" autofocus>
+              </div>
+              <select id="catFilterSelect" class="form-control" style="width:190px">
+                <option value="">All Categories</option>
+              </select>
+            </div>
+
+            <!-- Category Quick-Filter Tabs -->
+            <div class="cat-tabs-wrap no-print" id="catTabsWrap">
+              <button class="cat-tab active" data-cat="" onclick="setActiveTab(this, '')">🔲 All</button>
+            </div>
+
+            <!-- Manual Item Entry -->
+            <div class="no-print" style="background:rgba(79,142,247,0.07);border:1px solid rgba(79,142,247,0.25);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:12px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+              <div style="font-size:13px;font-weight:700;color:var(--brand-blue);white-space:nowrap;align-self:center;">✏️ Manual Item</div>
+              <div class="form-group" style="margin:0;flex:2;min-width:140px;">
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Item Name *</label>
+                <input type="text" id="manualName" class="form-control" placeholder="e.g. Custom Service" style="height:36px;">
+              </div>
+              <div class="form-group" style="margin:0;width:110px;">
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Price (Rs.) *</label>
+                <input type="number" id="manualPrice" class="form-control" placeholder="0.00" min="0" step="0.01" style="height:36px;">
+              </div>
+              <div class="form-group" style="margin:0;width:80px;">
+                <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Qty</label>
+                <input type="number" id="manualQty" class="form-control" value="1" min="1" style="height:36px;">
+              </div>
+              <button class="btn btn-primary" onclick="addManualItem()" style="height:36px;padding:0 16px;white-space:nowrap;">➕ Add to Bill</button>
+            </div>
+
+            <div id="productGrid" class="product-grid">
+              <div class="empty-state" style="grid-column:1/-1">Loading products...</div>
+            </div>
+          </div>
+
+          <!-- Right: Cart Panel -->
+          <div class="cart-panel no-print">
+            <div class="cart-header">
+              <div class="cart-title">🛒 Current Bill</div>
+              <button class="btn btn-sm btn-ghost" onclick="clearCartPrompt()" style="color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2)">🗑 Clear</button>
+            </div>
+
+            <div class="cart-items" id="cartItems">
+              <div class="cart-empty">
+                <div class="empty-icon">🛒</div>
+                <div style="font-weight:600;color:var(--text-primary)">Cart is empty</div>
+                <div style="font-size:12px">Search or click a product to add</div>
+              </div>
+            </div>
+
+            <div class="cart-summary">
+              <div class="cart-row">
+                <span>Subtotal</span>
+                <span id="txtSubtotal">Rs. 0.00</span>
+              </div>
+              <!-- Discount Toggle Row -->
+              <div style="margin:4px 0 2px;">
+                <div class="discount-toggle-wrap">
+                  <button class="discount-toggle-btn active" id="discToggleRs" onclick="setDiscountMode('fixed')">Rs.</button>
+                  <button class="discount-toggle-btn" id="discTogglePct" onclick="setDiscountMode('percent')">%</button>
+                </div>
+              </div>
+              <div class="cart-row" style="align-items:center;margin:4px 0;">
+                <span id="discountLabel">Discount (Rs.)</span>
+                <input type="number" id="inpDiscount" class="form-control" value="0" min="0" step="0.01"
+                  style="width:100px;text-align:right" onchange="calcTotal()" onkeyup="calcTotal()">
+              </div>
+              <div class="cart-row total">
+                <span>Total Amount</span>
+                <span id="txtTotal" style="color:var(--brand-blue)">Rs. 0.00</span>
+              </div>
+            </div>
+
+            <div class="cart-actions">
+              <div class="form-row" style="margin-bottom:8px;">
+                <select id="inpStatus" class="form-control">
+                  <option value="paid">✅ Paid</option>
+                  <option value="unpaid">⏳ Pending</option>
+                </select>
+                <select id="inpPayment" class="form-control">
+                  <option value="cash">💵 Cash</option>
+                  <option value="card">💳 Card</option>
+                  <option value="other">🏦 Other</option>
+                </select>
+              </div>
+              <!-- Cash Amount + Change Display -->
+              <div style="margin-bottom:6px;">
+                <div class="input-group" style="width:100%">
+                  <span class="input-addon">Paid: Rs.</span>
+                  <input type="number" id="inpPaid" class="form-control" style="font-weight:700" placeholder="0.00">
+                </div>
+                <div id="changeDisplay" class="cash-change-display" style="display:none;margin-top:6px;font-size:16px;padding:8px;border-radius:var(--radius-sm);">
+                  Change: Rs. 0.00
+                </div>
+              </div>
+              <button class="btn btn-primary btn-lg btn-full" onclick="saveBill()" id="btnSave">
+                🧾 Save Bill &amp; Print
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══ Print Success Modal ═══ -->
+  <div id="printModal" class="modal-backdrop">
+    <div class="modal" style="max-width:400px;text-align:center">
+      <div class="modal-body" style="padding:40px 24px;">
+        <div style="font-size:52px;margin-bottom:16px;animation:slideIn 0.4s ease">✅</div>
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:8px">Bill Created Successfully!</h2>
+        <p id="printBillNo" style="color:var(--text-muted);margin-bottom:24px;font-size:14px;"></p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button class="btn btn-primary btn-lg btn-full" onclick="doPrint()">🖨️ Print Bill (A4 — Brother)</button>
+          <button class="btn btn-secondary btn-full" onclick="doPdf()">💾 Save as PDF</button>
+          <button class="btn btn-ghost btn-full" onclick="closeModal('printModal'); clearCart(true)">➕ Start New Bill</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ A4 Printable Area (Hidden normally) ═══ -->
+  <div id="printArea" style="visibility:hidden;position:absolute;top:-9999px;left:-9999px;background:#fff;color:#000;padding:40px;width:210mm;box-sizing:border-box;font-family:sans-serif;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:20px;border-bottom:2px solid #000;padding-bottom:20px;margin-bottom:24px;">
+      <img src="assets/logo.png" style="width:80px;height:80px;object-fit:contain;" alt="Logo" onerror="this.style.display='none'">
+      <div>
+        <h1 style="margin:0;font-size:28px;font-weight:900;color:#000;" id="pShopName">MINYARA</h1>
+        <p style="margin:4px 0 0;font-size:14px;color:#444;" id="pShopTag">A MOMENTS OF TECHNOLOGY</p>
+        <p style="margin:2px 0 0;font-size:12px;color:#555;" id="pShopAddr">Printing &amp; Stationery</p>
+        <p style="margin:2px 0 0;font-size:11px;color:#555;" id="pShopEmail"></p>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-bottom:24px;font-size:13px;">
+      <div>
+        <strong>Bill To:</strong><br>
+        <span id="pCustName">Customer</span><br>
+        <span id="pCustPhone"></span>
+      </div>
+      <div style="text-align:right;color:#000;">
+        <strong>Invoice No:</strong> <span id="pBillNo" style="color:#000"></span><br>
+        <strong>Date:</strong> <span id="pDate" style="color:#000"></span><br>
+        <strong>Payment:</strong> <span id="pMethod" style="color:#000"></span>
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;background:#fff;">
+      <thead>
+        <tr style="background:#f0f0f0!important;border-bottom:2px solid #000;">
+          <th style="padding:10px;border:1px solid #ccc;text-align:left;color:#000!important;background:#f0f0f0!important;">Item Description</th>
+          <th style="padding:10px;border:1px solid #ccc;text-align:center;color:#000!important;background:#f0f0f0!important;">Qty</th>
+          <th style="padding:10px;border:1px solid #ccc;text-align:right;color:#000!important;background:#f0f0f0!important;">Price</th>
+          <th style="padding:10px;border:1px solid #ccc;text-align:right;color:#000!important;background:#f0f0f0!important;">Amount</th>
+        </tr>
+      </thead>
+      <tbody id="pItems" style="background:#fff;"></tbody>
+    </table>
+
+    <div style="display:flex;justify-content:flex-end;">
+      <div style="width:300px;font-size:14px;color:#000;">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Subtotal:</span><span id="pSub"></span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;"><span id="pDiscLabel">Discount:</span><span id="pDisc"></span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #000;font-weight:bold;font-size:16px;color:#000;">
+          <span>Grand Total:</span><span id="pTotal"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Paid Amount:</span><span id="pPaid"></span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>Change:</span><span id="pChange"></span></div>
+      </div>
+    </div>
+
+    <div id="pFooter" style="margin-top:50px;text-align:center;font-size:12px;border-top:1px solid #ccc;padding-top:16px;color:#555;">
+      Thank you for your business!<br>System generated invoice. No signature required.
+    </div>
+  </div>
+
+  <script src="js/app.js?v=5"></script>
+  <script src="js/api.js?v=5"></script>
+  <script>
+    let products = [];
+    let categories = [];
+    let cart = [];
+    let lastSavedBill = null;
+    let shopSettings = null;
+    let userModifiedPaid = false;
+    let discountMode = 'fixed'; // 'fixed' | 'percent'
+    let activeCatFilter = '';
+
+    const COLOR_NAMES = {
+      '#EF4444': 'Red', '#991B1B': 'Dark Red', '#F97316': 'Orange',
+      '#D97706': 'Amber', '#EAB308': 'Yellow', '#CA8A04': 'Gold',
+      '#22C55E': 'Green', '#166534': 'Dark Green', '#65A30D': 'Olive',
+      '#14B8A6': 'Teal', '#06B6D4': 'Cyan', '#3B82F6': 'Blue',
+      '#1E40AF': 'Dark Blue', '#1E3A5F': 'Navy', '#0891B2': 'Ocean Blue',
+      '#A855F7': 'Purple', '#7C3AED': 'Violet', '#C4B5FD': 'Lavender',
+      '#EC4899': 'Pink', '#F43F5E': 'Hot Pink', '#FB7185': 'Coral Pink',
+      '#FB923C': 'Peach', '#92400E': 'Brown', '#7F1D1D': 'Maroon',
+      '#D4C5A9': 'Beige', '#1E293B': 'Black', '#6B7280': 'Grey',
+      '#9CA3AF': 'Silver', '#D1D5DB': 'Pale Grey', '#FFFFFF': 'White'
+    };
+
+    function colorBoxHtml(color, size = '') {
+      if (!color) return '';
+      const isWhite = (color || '').toUpperCase() === '#FFFFFF';
+      return `<span class="color-box ${size} ${isWhite ? 'white-box' : ''}" style="background:${color}" title="${COLOR_NAMES[(color||'').toUpperCase()] || color}"></span>`;
+    }
+
+    // ─── Discount Mode ───────────────────────────────────────────
+    function setDiscountMode(mode) {
+      discountMode = mode;
+      document.getElementById('discToggleRs').classList.toggle('active', mode === 'fixed');
+      document.getElementById('discTogglePct').classList.toggle('active', mode === 'percent');
+      document.getElementById('discountLabel').textContent = mode === 'percent' ? 'Discount (%)' : 'Discount (Rs.)';
+      document.getElementById('inpDiscount').value = 0;
+      calcTotal();
+    }
+
+    // ─── Category Tabs ───────────────────────────────────────────
+    function setActiveTab(btn, catId) {
+      activeCatFilter = catId;
+      document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('catFilterSelect').value = catId;
+      renderGrid();
+    }
+
+    function buildCatTabs(cats) {
+      const wrap = document.getElementById('catTabsWrap');
+      cats.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'cat-tab';
+        btn.dataset.cat = c.id;
+        btn.textContent = c.name;
+        btn.onclick = () => setActiveTab(btn, String(c.id));
+        wrap.appendChild(btn);
+      });
+    }
+
+    // ─── Manual Item ─────────────────────────────────────────────
+    function addManualItem() {
+      const name = document.getElementById('manualName').value.trim();
+      const price = parseFloat(document.getElementById('manualPrice').value);
+      const qty = parseInt(document.getElementById('manualQty').value) || 1;
+      if (!name) return toast('warning', 'Name Required', 'Enter an item name');
+      if (!price || price <= 0) return toast('warning', 'Price Required', 'Enter a valid price');
+      const existing = cart.find(i => i.product_id === null && i.product_name === name && i.unit_price === price);
+      if (existing) { existing.qty += qty; existing.total = existing.qty * existing.unit_price; }
+      else cart.push({ product_id: null, product_name: name, unit: 'pcs', unit_price: price, qty, total: price * qty });
+      document.getElementById('manualName').value = '';
+      document.getElementById('manualPrice').value = '';
+      document.getElementById('manualQty').value = 1;
+      document.getElementById('manualName').focus();
+      updateCartUI();
+      toast('success', 'Added', `${name} added to bill`, 1800);
+    }
+
+    async function init() {
+      try {
+        try {
+          shopSettings = await apiFetch('settings.php');
+          if (shopSettings) {
+            document.getElementById('pShopName').textContent = shopSettings.shop_name || 'MINYARA';
+            document.getElementById('pShopTag').textContent = shopSettings.shop_tagline || '';
+            document.getElementById('pShopAddr').textContent = shopSettings.shop_address || '';
+            if (shopSettings.shop_phone) document.getElementById('pShopAddr').textContent += ' | ' + shopSettings.shop_phone;
+            if (shopSettings.shop_email) document.getElementById('pShopEmail').textContent = shopSettings.shop_email;
+            if (shopSettings.invoice_footer) document.getElementById('pFooter').textContent = shopSettings.invoice_footer;
+            if (shopSettings.bill_prefix) localStorage.setItem('minyara_bill_prefix', shopSettings.bill_prefix);
+            if (shopSettings.shop_name) localStorage.setItem('minyara_shop_name', shopSettings.shop_name);
+          }
+        } catch (e) {}
+
+        categories = await CategoriesAPI.list();
+        const cf = document.getElementById('catFilterSelect');
+        categories.forEach(c => cf.add(new Option(c.name, c.id)));
+        buildCatTabs(categories);
+        loadProducts();
+      } catch (e) {
+        toast('error', 'Init failed', e.message);
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        products = await ProductsAPI.list();
+        renderGrid();
+      } catch (e) {
+        toast('error', 'Products failed', e.message);
+      }
+    }
+
+    function renderGrid() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      const cat   = activeCatFilter || document.getElementById('catFilterSelect').value;
+      const grid  = document.getElementById('productGrid');
+
+      const filtered = products.filter(p => {
+        if (cat && String(p.category_id) !== cat) return false;
+        if (query && !(p.name.toLowerCase().includes(query) || (p.sku||'').toLowerCase().includes(query))) return false;
+        return true;
+      });
+
+      if (!filtered.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>No products found</h3></div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(p => {
+        const isOos = p.stock_qty <= 0;
+        const imgHtml = p.image
+          ? `<img src="${p.image}" class="product-img-grid" onerror="this.src='assets/no-image.png'">`
+          : `<div class="product-img-grid" style="display:flex;align-items:center;justify-content:center;font-size:32px;background:#f8fafc;color:#e2e8f0;">📷</div>`;
+        const stockChip = isOos
+          ? `<span class="stock-badge zero" style="font-size:10px;">Out of Stock</span>`
+          : p.stock_qty <= p.min_stock
+            ? `<span class="stock-badge low" style="font-size:10px;">⚠️ ${p.stock_qty} left</span>`
+            : `<span class="stock-badge good" style="font-size:10px;">✅ ${p.stock_qty}</span>`;
+        return `
+          <div class="product-tile ${isOos ? 'out-of-stock' : ''}" onclick="${isOos ? '' : `addToCart(${p.id})`}">
+            ${imgHtml}
+            <div class="pt-category">${p.category_name || '-'}</div>
+            <div class="pt-name">${p.name}</div>
+            ${p.color ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">${colorBoxHtml(p.color)} ${COLOR_NAMES[(p.color||'').toUpperCase()] || p.color}</div>` : ''}
+            ${stockChip}
+            <div class="pt-price">${formatCurrency(p.sell_price)}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function addToCart(pid) {
+      const prod = products.find(p => p.id === pid);
+      if (!prod || prod.stock_qty <= 0) return toast('error', 'Out of stock');
+      const existing = cart.find(i => i.product_id === pid);
+      if (existing) {
+        if (existing.qty >= prod.stock_qty) return toast('warning', 'Max Limit', `Only ${prod.stock_qty} in stock`);
+        existing.qty++;
+        existing.total = existing.qty * existing.unit_price;
+      } else {
+        cart.push({
+          product_id: prod.id, product_name: prod.name, unit: prod.unit,
+          unit_price: parseFloat(prod.sell_price), qty: 1, total: parseFloat(prod.sell_price),
+          color: prod.color || null, image: prod.image || null
+        });
+      }
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      const container = document.getElementById('cartItems');
+      if (!cart.length) {
+        container.innerHTML = `
+          <div class="cart-empty">
+            <div class="empty-icon">🛒</div>
+            <div style="font-weight:600;color:var(--text-primary)">Cart is empty</div>
+            <div style="font-size:12px">Search or click a product to add</div>
+          </div>`;
+        calcTotal(); return;
+      }
+      container.innerHTML = cart.map((item, idx) => {
+        const cBox = colorBoxHtml(item.color);
+        const colorLabel = item.color
+          ? `<div class="cart-item-color">${cBox}<span>${COLOR_NAMES[(item.color||'').toUpperCase()] || item.color}</span></div>` : '';
+        const imgHtml = item.image
+          ? `<img src="${item.image}" class="product-img-cart" onerror="this.src='assets/no-image.png'">`
+          : `<div class="product-img-cart" style="display:flex;align-items:center;justify-content:center;font-size:14px;background:#f8fafc;color:#e2e8f0;">📷</div>`;
+        return `
+          <div class="cart-item">
+            <div class="cart-item-info" style="display:flex;align-items:center">
+              ${imgHtml}
+              <div class="cart-item-name">
+                <div style="line-height:1.2">${item.product_name}</div>
+                <div class="cart-item-price">@ ${formatCurrency(item.unit_price)}</div>
+                ${colorLabel}
+              </div>
+            </div>
+            <div class="cart-item-qty">
+              <button class="qty-btn" onclick="chgQty(${idx},-1)">−</button>
+              <span class="qty-val">${item.qty}</span>
+              <button class="qty-btn" onclick="chgQty(${idx},1)">+</button>
+            </div>
+            <div class="cart-item-total">${formatCurrency(item.total)}</div>
+            <div class="cart-remove" onclick="remItem(${idx})">✕</div>
+          </div>`;
+      }).join('');
+      container.scrollTop = container.scrollHeight;
+      calcTotal();
+    }
+
+    function chgQty(idx, delta) {
+      const item = cart[idx];
+      const prod = products.find(p => p.id === item.product_id);
+      const newQty = item.qty + delta;
+      if (newQty <= 0) return remItem(idx);
+      if (prod && newQty > prod.stock_qty) return toast('warning', 'Stock Limit', `Only ${prod.stock_qty} in stock`);
+      item.qty = newQty; item.total = item.qty * item.unit_price;
+      updateCartUI();
+    }
+
+    function remItem(idx) { cart.splice(idx, 1); updateCartUI(); }
+
+    function calcTotal() {
+      const sub = cart.reduce((s, i) => s + i.total, 0);
+      const discVal = parseFloat(document.getElementById('inpDiscount').value) || 0;
+      const { discountAmount, total } = calcDiscountedTotal(sub, discVal, discountMode);
+
+      document.getElementById('txtSubtotal').textContent = formatCurrency(sub);
+      document.getElementById('txtTotal').textContent = formatCurrency(total);
+
+      // Show change
+      const paidEl = document.getElementById('inpPaid');
+      const paid = parseFloat(paidEl.value) || 0;
+      const changeDisp = document.getElementById('changeDisplay');
+      if (paid > 0 && total > 0) {
+        const change = paid - total;
+        changeDisp.style.display = 'block';
+        changeDisp.textContent = change >= 0 ? `Change: Rs. ${change.toFixed(2)}` : `Still owe: Rs. ${Math.abs(change).toFixed(2)}`;
+        changeDisp.className = 'cash-change-display' + (change < 0 ? ' negative' : '');
+      } else {
+        changeDisp.style.display = 'none';
+      }
+
+      if (!userModifiedPaid && total > 0) paidEl.value = total.toFixed(2);
+      else if (total === 0) { paidEl.value = ''; userModifiedPaid = false; changeDisp.style.display = 'none'; }
+    }
+
+    async function clearCartPrompt() {
+      if (cart.length === 0) return;
+      if (await confirmAction('This will clear all items in the current bill. Are you sure?', 'Clear Cart', 'Yes, Clear Cart')) {
+        clearCart(true);
+      }
+    }
+
+    function clearCart(hard = false) {
+      cart = [];
+      document.getElementById('custName').value = '';
+      document.getElementById('custPhone').value = '';
+      document.getElementById('inpDiscount').value = '0';
+      document.getElementById('inpPaid').value = '';
+      document.getElementById('changeDisplay').style.display = 'none';
+      userModifiedPaid = false;
+      document.getElementById('manualName').value = '';
+      document.getElementById('manualPrice').value = '';
+      document.getElementById('manualQty').value = 1;
+      document.getElementById('inpStatus').value = 'paid';
+      updateCartUI();
+    }
+
+    async function saveBill() {
+      if (!cart.length) return toast('warning', 'Empty Cart', 'Please add items to cart first');
+      const btn = document.getElementById('btnSave');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> Saving...';
+      btn.disabled = true;
+
+      const sub = cart.reduce((s, i) => s + i.total, 0);
+      const discVal = parseFloat(document.getElementById('inpDiscount').value) || 0;
+      const { discountAmount, total } = calcDiscountedTotal(sub, discVal, discountMode);
+      const paidStr = document.getElementById('inpPaid').value;
+      const paid = paidStr === '' ? total : parseFloat(paidStr);
+
+      const payload = {
+        customer_name: document.getElementById('custName').value.trim(),
+        customer_phone: document.getElementById('custPhone').value.trim(),
+        discount: discountAmount,
+        discount_mode: discountMode,
+        discount_value: discVal,
+        tax: 0, paid_amount: paid,
+        payment_method: document.getElementById('inpPayment').value,
+        status: document.getElementById('inpStatus').value,
+        items: cart
+      };
+
+      try {
+        const res = await BillsAPI.create(payload);
+        lastSavedBill = {
+          ...payload, bill_no: res.bill_no, subtotal: sub, total, change: res.change,
+          created_at: new Date().toISOString()
+        };
+        document.getElementById('printBillNo').textContent = `Invoice: ${res.bill_no} • Total: ${formatCurrency(total)}`;
+        preparePrintDOM();
+        openModal('printModal');
+        loadProducts();
+      } catch (e) {
+        toast('error', 'Failed to Create Bill', e.message);
+      } finally {
+        btn.innerHTML = originalText; btn.disabled = false;
+      }
+    }
+
+    function preparePrintDOM() {
+      if (!lastSavedBill) return;
+      const b = lastSavedBill;
+      document.getElementById('pBillNo').textContent = b.bill_no;
+      document.getElementById('pDate').textContent = formatDateTime(b.created_at);
+      document.getElementById('pCustName').textContent = b.customer_name || 'Walk-in Customer';
+      document.getElementById('pCustPhone').textContent = b.customer_phone || '-';
+      document.getElementById('pMethod').textContent = b.payment_method.toUpperCase();
+      document.getElementById('pSub').textContent = formatCurrency(b.subtotal);
+      const discLabel = b.discount_mode === 'percent'
+        ? `Discount (${b.discount_value}%):` : 'Discount:';
+      document.getElementById('pDiscLabel').textContent = discLabel;
+      document.getElementById('pDisc').textContent = '- ' + formatCurrency(b.discount);
+      document.getElementById('pTotal').textContent = formatCurrency(b.total);
+      document.getElementById('pPaid').textContent = formatCurrency(b.paid_amount);
+      document.getElementById('pChange').textContent = formatCurrency(Math.max(0, b.change || b.paid_amount - b.total));
+      document.getElementById('pItems').innerHTML = b.items.map(i => `
+        <tr style="background:#fff!important;">
+          <td style="padding:10px;border:1px solid #ccc;color:#000!important;">${i.product_name}</td>
+          <td style="padding:10px;border:1px solid #ccc;text-align:center;color:#000!important;">${i.qty}</td>
+          <td style="padding:10px;border:1px solid #ccc;text-align:right;color:#000!important;">${formatCurrency(i.unit_price)}</td>
+          <td style="padding:10px;border:1px solid #ccc;text-align:right;font-weight:700;color:#000!important;">${formatCurrency(i.total)}</td>
+        </tr>`).join('');
+    }
+
+    function doPrint() {
+      const pa = document.getElementById('printArea');
+      pa.style.visibility = 'visible';
+      pa.style.position = 'static';
+      window.print();
+      setTimeout(() => {
+        pa.style.visibility = 'hidden';
+        pa.style.position = 'absolute';
+        pa.style.top = '-9999px';
+        pa.style.left = '-9999px';
+      }, 500);
+    }
+
+    function doPdf() {
+      if (!lastSavedBill || !window.jspdf) return toast('error', 'PDF Engine Error');
+      toast('info', 'Generating PDF...');
+      try {
+        const doc = new window.jspdf.jsPDF();
+        const b = lastSavedBill;
+        doc.setFontSize(24);
+        doc.text(shopSettings?.shop_name || 'MINYARA', 105, 20, { align: 'center' });
+        doc.setFontSize(10);
+        if (shopSettings?.shop_tagline) doc.text(shopSettings.shop_tagline, 105, 28, { align: 'center' });
+        let addr = shopSettings?.shop_address || '';
+        if (shopSettings?.shop_phone) addr += ' | Phone: ' + shopSettings.shop_phone;
+        if (addr) doc.text(addr, 105, 34, { align: 'center' });
+        doc.line(14, 44, 196, 44);
+        doc.setFontSize(11);
+        doc.text('Invoice No: ' + b.bill_no, 14, 54);
+        doc.text('Date: ' + new Date(b.created_at).toLocaleDateString(), 14, 60);
+        doc.text('Bill To: ' + (b.customer_name || 'Walk-in'), 130, 54);
+        const tData = b.items.map(i => [i.product_name, i.qty.toString(), formatCurrency(i.unit_price), formatCurrency(i.total)]);
+        doc.autoTable({
+          startY: 69, head: [['Item Description', 'Qty', 'Unit Price', 'Amount']],
+          body: tData, theme: 'striped',
+          headStyles: { fillColor: [79, 142, 247] },
+          columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' } }
+        });
+        const finalY = doc.lastAutoTable.finalY + 10;
+        doc.text(`Subtotal: ${formatCurrency(b.subtotal)}`, 130, finalY);
+        doc.text(`Discount: ${formatCurrency(b.discount)}`, 130, finalY + 6);
+        doc.setFontSize(14);
+        doc.text(`Total: ${formatCurrency(b.total)}`, 130, finalY + 16);
+        doc.save(`MINYARA_Bill_${b.bill_no}.pdf`);
+      } catch (e) {
+        toast('error', 'PDF Error', e.message);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      init();
+      document.getElementById('inpPaid').addEventListener('input', e => {
+        userModifiedPaid = true;
+        if (!e.target.value) { userModifiedPaid = false; }
+        calcTotal();
+      });
+      document.getElementById('manualPrice').addEventListener('keydown', e => { if (e.key === 'Enter') addManualItem(); });
+      document.getElementById('searchInput').addEventListener('keyup', e => {
+        if (e.key === 'Enter') {
+          const query = e.target.value.toLowerCase().trim();
+          if (!query) return;
+          const hit = products.find(p => p.sku?.toLowerCase() === query || p.name.toLowerCase().includes(query));
+          if (hit && hit.stock_qty > 0) { addToCart(hit.id); e.target.value = ''; renderGrid(); }
+        } else if (e.key === 'Escape') {
+          e.target.value = ''; renderGrid();
+        } else {
+          debounce(renderGrid, 200)();
+        }
+      });
+      document.getElementById('catFilterSelect').addEventListener('change', e => {
+        activeCatFilter = e.target.value;
+        document.querySelectorAll('.cat-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === activeCatFilter));
+        renderGrid();
+      });
+      // Alt+C — Clear cart
+      document.addEventListener('keydown', e => {
+        if (e.altKey && e.key === 'c') { e.preventDefault(); clearCartPrompt(); }
+      });
+    });
+  </script>
+</body>
+
+</html>

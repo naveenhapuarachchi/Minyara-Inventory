@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minyara Analytics — Comprehensive graphs, category breakdowns, and revenue reporting.">
+  <title>Minyara Inventory | Analytics & Reports</title>
+  <link rel="stylesheet" href="css/style.css?v=6">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle Sidebar">‹</button>
+      <a href="index.html" class="sidebar-brand">
+        <img src="assets/logo.png" alt="Minyara" id="sidebarLogo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhNmZmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TTwvdGV4dD48L3N2Zz4='">
+        <div class="sidebar-brand-text"><div class="sidebar-brand-name">MINYARA</div><div class="sidebar-brand-sub">Inventory &amp; Billing</div></div>
+      </a>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main Menu</div>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-link-text">Dashboard</span></a>
+        <a href="analytics.html" class="nav-link active"><span class="nav-icon">📈</span><span class="nav-link-text">Analytics &amp; Reports</span></a>
+        <a href="billing.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-link-text">POS / Billing</span></a>
+        <a href="bills.html" class="nav-link">
+          <span class="nav-icon">📋</span><span class="nav-link-text">Bills History</span>
+          <span class="nav-badge orange" id="navBadgeBills" style="display:none">0</span>
+        </a>
+        <div class="nav-section-label">Management</div>
+        <a href="inventory.html" class="nav-link">
+          <span class="nav-icon">📦</span><span class="nav-link-text">Inventory / Stock</span>
+          <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
+        </a>
+        <a href="categories.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <div class="nav-section-label">System</div>
+        <a href="settings.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-time">
+          <div class="sidebar-clock" id="sidebarTime">...</div>
+          <div class="sidebar-date" id="sidebarDate">...</div>
+        </div>
+        <div class="sidebar-dark-toggle">
+          <span class="sidebar-dark-toggle-label">🌙 Dark Mode</span>
+          <label class="dark-toggle-switch"><input type="checkbox" id="darkModeToggle"><span class="dark-toggle-slider"></span></label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top-header no-print">
+        <div class="page-title">
+          <h1>Analytics &amp; Reports</h1>
+          <p>Deep dive into sales trends, product metrics, and business health</p>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print Report</button>
+        </div>
+      </header>
+
+      <div class="page-content" id="analyticsPrintArea">
+        <div class="date-range-tabs no-print" id="dateTabs">
+          <button class="date-range-tab active" data-period="year" onclick="setPeriod('year')">Current Year</button>
+          <button class="date-range-tab" data-period="month" onclick="setPeriod('month')">This Month</button>
+          <button class="date-range-tab" data-period="week" onclick="setPeriod('week')">This Week</button>
+          <button class="date-range-tab" data-period="today" onclick="setPeriod('today')">Today</button>
+        </div>
+        
+        <h2 style="display:none;margin-bottom:20px;font-size:24px;color:#000;" class="print-only">Minyara Analytics Report</h2>
+
+        <div class="grid-2">
+          <!-- 1. Revenue Trend Line -->
+          <div class="card" style="grid-column: 1 / -1;">
+            <div class="card-header"><div class="card-title">📈 Revenue Trend</div></div>
+            <div class="card-body">
+              <div class="chart-wrap" style="height:320px;"><canvas id="cRev"></canvas></div>
+            </div>
+          </div>
+
+          <!-- 2. Sales By Category (Doughnut) -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">🍩 Revenue By Category</div></div>
+            <div class="card-body">
+              <div class="chart-wrap" style="height:280px;display:flex;justify-content:center"><canvas id="cCat"></canvas></div>
+            </div>
+          </div>
+
+          <!-- 3. Payment Methods (Doughnut) -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">💳 Payment Methods Breakdown</div></div>
+            <div class="card-body">
+              <div class="chart-wrap" style="height:280px;display:flex;justify-content:center"><canvas id="cPay"></canvas></div>
+            </div>
+          </div>
+
+          <!-- 4. Top Products Qty (Bar) -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">🛍️ Top Products (Qty Sold)</div></div>
+            <div class="card-body">
+              <div class="chart-wrap" style="height:300px;"><canvas id="cTopQty"></canvas></div>
+            </div>
+          </div>
+
+          <!-- 5. Top Revenue Products (Bar) -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">💰 Top Revenue Products</div></div>
+            <div class="card-body">
+              <div class="chart-wrap" style="height:300px;"><canvas id="cTopRev"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <style>
+    @media print {
+      .sidebar,.top-header,.date-range-tabs { display:none!important; }
+      body { background:white!important; color:#000!important; }
+      .main { margin-left:0!important; padding:0!important; }
+      .card { border:1px solid #ccc!important; box-shadow:none!important; margin-bottom:20px!important; break-inside:avoid; }
+      .print-only { display:block!important; }
+      .chart-wrap { height:300px!important; }
+    }
+  </style>
+
+  <script src="js/app.js?v=6"></script>
+  <script src="js/api.js?v=6"></script>
+  <script>
+    Chart.defaults.color = '#8b949e';
+    Chart.defaults.font.family = 'Inter';
+    Chart.defaults.font.size = 12;
+
+    const palette = ['#1a6ffb','#f97316','#3fb950','#a371f7','#eab308','#ec4899','#14b8a6','#f43f5e','#06b6d4'];
+    let charts = {};
+    let currentPeriod = 'year';
+
+    function clearCharts() {
+      Object.keys(charts).forEach(k => { if(charts[k]) charts[k].destroy(); });
+    }
+
+    async function setPeriod(period) {
+      currentPeriod = period;
+      document.querySelectorAll('.date-range-tab').forEach(b => b.classList.toggle('active', b.dataset.period === period));
+      await loadData();
+    }
+
+    async function loadData() {
+      try {
+        const data = await AnalyticsAPI.charts(currentPeriod);
+        clearCharts();
+
+        // 1. Revenue
+        const revCtx = document.getElementById('cRev').getContext('2d');
+        const revGrad = revCtx.createLinearGradient(0,0,0,320);
+        revGrad.addColorStop(0,'rgba(26,111,251,0.25)');
+        revGrad.addColorStop(1,'rgba(26,111,251,0.01)');
+        charts.rev = new Chart(revCtx, {
+          type:'line',
+          data:{
+            labels: data.revenue_trend.map(i=>i.label),
+            datasets:[{
+              label:'Revenue (Rs)',
+              data: data.revenue_trend.map(i=>i.value),
+              borderColor:'#1a6ffb', backgroundColor:revGrad, borderWidth:3, fill:true, tension:0.4,
+              pointBackgroundColor:'#fff', pointBorderColor:'#1a6ffb', pointRadius:4, pointHoverRadius:7
+            }]
+          },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+            scales:{x:{grid:{display:false},border:{display:false}},y:{grid:{color:'rgba(100,116,139,0.08)'},border:{display:false},beginAtZero:true}} }
+        });
+
+        // 2. Sales by Cat
+        charts.cat = new Chart(document.getElementById('cCat'), {
+          type:'doughnut',
+          data:{ labels:data.sales_by_category.map(i=>i.label),
+            datasets:[{ data:data.sales_by_category.map(i=>i.value), backgroundColor:palette, borderWidth:0 }] },
+          options: { responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{position:'right',labels:{color:document.documentElement.dataset.theme==='dark'?'#e2e8f0':'#475569'}}} }
+        });
+
+        // 3. Payment Methods
+        charts.pay = new Chart(document.getElementById('cPay'), {
+          type:'pie',
+          data:{ labels:data.payment_methods.map(i=>i.label),
+            datasets:[{ data:data.payment_methods.map(i=>i.value), backgroundColor:['#3fb950','#1a6ffb','#f97316','#8b5cf6'], borderWidth:0 }] },
+           options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right',labels:{color:document.documentElement.dataset.theme==='dark'?'#e2e8f0':'#475569'}}} }
+        });
+
+        // 4. Top Qty (Bar H)
+        charts.qty = new Chart(document.getElementById('cTopQty'), {
+          type:'bar',
+          data:{ labels:data.top_products_qty.map(i=>i.label),
+            datasets:[{ label:'Qty Sold', data:data.top_products_qty.map(i=>i.value), backgroundColor:'#f97316', borderRadius:4 }] },
+          options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}},y:{grid:{display:false}}} }
+        });
+
+        // 5. Top Rev (Bar H)
+        charts.topRev = new Chart(document.getElementById('cTopRev'), {
+          type:'bar',
+          data:{ labels:data.revenue_by_product.map(i=>i.label),
+            datasets:[{ label:'Revenue', data:data.revenue_by_product.map(i=>i.value), backgroundColor:'#3fb950', borderRadius:4 }] },
+          options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}},y:{grid:{display:false}}} }
+        });
+
+      } catch(e) { toast('error','Chart Error',e.message); }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</body>
+</html>

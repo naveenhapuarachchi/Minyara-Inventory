@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Minyara Inventory Hub — Manage products, pricing, stock levels, and bulk operations.">
+  <title>Minyara Inventory | Products &amp; Stock</title>
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <style>
+    @media print {
+      .sidebar,.top-header,.no-print,.bulk-bar,.toolbar { display:none!important; }
+      body { background:white!important; }
+      .main { margin-left:0!important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Toggle Sidebar">‹</button>
+      <a href="index.html" class="sidebar-brand">
+        <img src="assets/logo.png" alt="Minyara" id="sidebarLogo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzFhNmZmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TTwvdGV4dD48L3N2Zz4='">
+        <div class="sidebar-brand-text"><div class="sidebar-brand-name">MINYARA</div><div class="sidebar-brand-sub">Inventory &amp; Billing</div></div>
+      </a>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main Menu</div>
+        <a href="index.html" class="nav-link"><span class="nav-icon">📊</span><span class="nav-link-text">Dashboard</span></a>
+        <a href="analytics.html" class="nav-link"><span class="nav-icon">📈</span><span class="nav-link-text">Analytics &amp; Reports</span></a>
+        <a href="billing.html" class="nav-link"><span class="nav-icon">🧾</span><span class="nav-link-text">POS / Billing</span></a>
+        <a href="bills.html" class="nav-link">
+          <span class="nav-icon">📋</span><span class="nav-link-text">Bills History</span>
+          <span class="nav-badge orange" id="navBadgeBills" style="display:none">0</span>
+        </a>
+        <div class="nav-section-label">Management</div>
+        <a href="inventory.html" class="nav-link active">
+          <span class="nav-icon">📦</span><span class="nav-link-text">Inventory / Stock</span>
+          <span class="nav-badge" id="navBadgeInventory" style="display:none">0</span>
+        </a>
+        <a href="categories.html" class="nav-link"><span class="nav-icon">🏷️</span><span class="nav-link-text">Categories</span></a>
+        <div class="nav-section-label">System</div>
+        <a href="settings.html" class="nav-link"><span class="nav-icon">⚙️</span><span class="nav-link-text">Settings</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-time">
+          <div class="sidebar-clock" id="sidebarTime">...</div>
+          <div class="sidebar-date" id="sidebarDate">...</div>
+        </div>
+        <div class="sidebar-dark-toggle">
+          <span class="sidebar-dark-toggle-label">🌙 Dark Mode</span>
+          <label class="dark-toggle-switch"><input type="checkbox" id="darkModeToggle"><span class="dark-toggle-slider"></span></label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top-header no-print">
+        <div class="page-title">
+          <h1>Inventory Hub</h1>
+          <p>Manage products, pricing, and stock levels</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" onclick="exportInventory()">📥 Export CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Print</button>
+          <button class="btn btn-primary" onclick="openProductModal()">+ New Product</button>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <!-- ── Bulk Action Bar ── -->
+        <div class="bulk-bar no-print" id="bulkBar">
+          <span class="bulk-bar-count" id="bulkCount">0 selected</span>
+          <button class="btn btn-sm btn-danger" onclick="bulkDelete()">🗑️ Delete Selected</button>
+          <div style="flex:1"></div>
+          <button class="btn btn-sm btn-ghost" onclick="clearSelection()">✕ Clear</button>
+        </div>
+
+        <div class="card">
+          <!-- ── Filter Toolbar ── -->
+          <div class="card-header no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)"> <span style="font-size:12px;color:var(--text-secondary)">All</span>
+            </label>
+            <div class="search-bar" style="max-width:280px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchInput" class="form-control" placeholder="Search by name or SKU...">
+            </div>
+            <select id="catFilter" class="form-control" style="width:180px">
+              <option value="">All Categories</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-secondary);">
+              <input type="checkbox" id="lowStockFilter"> ⚠️ Low Stock Only
+            </label>
+          </div>
+
+          <div class="table-wrapper" style="border-radius:0;border-left:none;border-right:none;">
+            <table id="productTable">
+              <thead>
+                <tr>
+                  <th style="width:40px;"></th>
+                  <th>Product Details</th>
+                  <th>Category</th>
+                  <th>Price (Sell / Cost)</th>
+                  <th style="min-width:160px;">Stock Level</th>
+                  <th>Min Lvl</th>
+                  <th style="min-width:190px;text-align:right;" class="no-print">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══ Product Form Modal ═══ -->
+  <div id="productModal" class="modal-backdrop">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <div class="modal-title" id="pmTitle">Add Product</div>
+        <button class="modal-close" onclick="closeModal('productModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="productForm">
+          <input type="hidden" id="pId">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Product Name *</label>
+              <input type="text" id="pName" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select id="pCat" class="form-control"></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">SKU (Auto-generated if blank)</label>
+              <input type="text" id="pSku" class="form-control" placeholder="e.g. PEN-BLU-001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Unit Type</label>
+              <select id="pUnit" class="form-control">
+                <option value="pcs">Pieces (pcs)</option>
+                <option value="box">Box</option>
+                <option value="set">Set</option>
+                <option value="kg">Kg</option>
+                <option value="pack">Pack</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Cost Price (Rs.)</label>
+              <input type="number" id="pCost" class="form-control" step="0.01" min="0" value="0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sell Price (Rs.) *</label>
+              <input type="number" id="pSell" class="form-control" step="0.01" min="0" required>
+            </div>
+          </div>
+          <div class="form-row" id="stockGroupRow">
+            <div class="form-group">
+              <label class="form-label">Initial Stock Qty</label>
+              <input type="number" id="pStock" class="form-control" min="0" value="0">
+              <small style="color:var(--text-muted);font-size:11px">Use Stock Adjustment after creation.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Low Stock Alert Level</label>
+              <input type="number" id="pMinStock" class="form-control" min="0" value="5">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Item Color (Optional)</label>
+            <div class="color-picker-row">
+              <select id="pColor" class="form-control" onchange="updateColorPreview()">
+                <option value="">— No Color —</option>
+                <option value="#EF4444">🔴 Red</option><option value="#991B1B">🔴 Dark Red</option>
+                <option value="#F97316">🟠 Orange</option><option value="#D97706">🟠 Tan / Amber</option>
+                <option value="#EAB308">🟡 Yellow</option><option value="#CA8A04">🟡 Gold</option>
+                <option value="#22C55E">🟢 Green</option><option value="#166534">🟢 Dark Green</option>
+                <option value="#65A30D">🟢 Olive</option><option value="#14B8A6">🩵 Teal</option>
+                <option value="#06B6D4">🩵 Cyan</option><option value="#3B82F6">🔵 Blue</option>
+                <option value="#1E40AF">🔵 Dark Blue</option><option value="#1E3A5F">🔵 Navy</option>
+                <option value="#0891B2">🔵 Ocean Blue</option><option value="#A855F7">🟣 Purple</option>
+                <option value="#7C3AED">🟣 Violet</option><option value="#C4B5FD">🟣 Lavender</option>
+                <option value="#EC4899">🩷 Pink</option><option value="#F43F5E">🩷 Hot Pink</option>
+                <option value="#FB7185">🩷 Coral Pink</option><option value="#FB923C">🍊 Peach</option>
+                <option value="#92400E">🤎 Brown</option><option value="#7F1D1D">🤎 Maroon</option>
+                <option value="#D4C5A9">🤍 Beige</option><option value="#1E293B">⚫ Black</option>
+                <option value="#6B7280">🩶 Grey</option><option value="#9CA3AF">🩶 Silver</option>
+                <option value="#D1D5DB">🩶 Pale Grey</option><option value="#FFFFFF">⚪ White</option>
+              </select>
+              <div class="color-preview-box" id="colorPreviewBox" title="Color Preview">—</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Product Image (Recommended 500×500)</label>
+            <div class="image-upload-wrapper" id="imageUploadWrapper">
+              <input type="file" id="imageInput" accept="image/*" onchange="previewImage(this)">
+              <img id="imagePreview" class="image-upload-preview">
+              <div class="image-upload-placeholder" id="uploadPlaceholder">
+                <div class="icon">📷</div>
+                <div>Click or drag to upload image</div>
+                <div style="font-size:10px">PNG, JPG or WebP (Max 2MB)</div>
+              </div>
+              <input type="hidden" id="pImagePath">
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" id="btnRemoveImage" style="margin-top:8px;display:none" onclick="removeImage()">🗑️ Remove Image</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description (Optional)</label>
+            <textarea id="pDesc" class="form-control"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('productModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Stock Adjustment Modal ═══ -->
+  <div id="stockModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📦 Adjust Stock: <span id="adjProductName" style="color:var(--text-accent)"></span></div>
+        <button class="modal-close" onclick="closeModal('stockModal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="adjProductId">
+        <div class="form-row" style="margin-bottom:20px;">
+          <label style="flex:1;padding:15px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;text-align:center;background:var(--success-bg);color:var(--success);font-weight:700;">
+            <input type="radio" name="adjType" value="in" checked style="display:none"> ➕ Stock IN (Add)
+          </label>
+          <label style="flex:1;padding:15px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;text-align:center;background:var(--danger-bg);color:var(--danger);font-weight:700;">
+            <input type="radio" name="adjType" value="out" style="display:none"> ➖ Stock OUT (Deduct)
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantity to Adjust *</label>
+          <input type="number" id="adjQty" class="form-control" min="1" value="1" required style="font-size:18px;font-weight:bold;height:50px;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note / Reason</label>
+          <input type="text" id="adjNote" class="form-control" placeholder="e.g. New stock arrived, Damaged item, etc.">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('stockModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitStockAdj()">Apply Adjustment</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js?v=4"></script>
+  <script src="js/api.js?v=4"></script>
+  <script>
+    let products = [];
+    let categories = [];
+    let selectedIds = new Set();
+
+    const COLOR_NAMES = {
+      '#EF4444':'Red','#991B1B':'Dark Red','#F97316':'Orange','#D97706':'Amber','#EAB308':'Yellow',
+      '#CA8A04':'Gold','#22C55E':'Green','#166534':'Dark Green','#65A30D':'Olive','#14B8A6':'Teal',
+      '#06B6D4':'Cyan','#3B82F6':'Blue','#1E40AF':'Dark Blue','#1E3A5F':'Navy','#0891B2':'Ocean Blue',
+      '#A855F7':'Purple','#7C3AED':'Violet','#C4B5FD':'Lavender','#EC4899':'Pink','#F43F5E':'Hot Pink',
+      '#FB7185':'Coral Pink','#FB923C':'Peach','#92400E':'Brown','#7F1D1D':'Maroon','#D4C5A9':'Beige',
+      '#1E293B':'Black','#6B7280':'Grey','#9CA3AF':'Silver','#D1D5DB':'Pale Grey','#FFFFFF':'White'
+    };
+
+    function colorBoxHtml(color, size='') {
+      if (!color) return '';
+      const isWhite = (color||'').toUpperCase() === '#FFFFFF';
+      return `<span class="color-box ${size} ${isWhite ? 'white-box':''}" style="background:${color}" title="${COLOR_NAMES[(color||'').toUpperCase()]||color}"></span>`;
+    }
+
+    function updateColorPreview() {
+      const val = document.getElementById('pColor').value;
+      const box = document.getElementById('colorPreviewBox');
+      if (val) { box.style.background=val; box.style.borderColor=val==='#FFFFFF'?'#cbd5e1':val; box.textContent=''; }
+      else { box.style.background=''; box.style.borderColor=''; box.textContent='—'; }
+    }
+
+    // ─── Bulk Selection ───────────────────────────────────────
+    function toggleSelectAll(checked) {
+      document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.checked = checked;
+        if (checked) selectedIds.add(parseInt(cb.value));
+        else selectedIds.delete(parseInt(cb.value));
+      });
+      updateBulkBar();
+    }
+
+    function rowCheckChange(id, checked) {
+      if (checked) selectedIds.add(id); else selectedIds.delete(id);
+      updateBulkBar();
+    }
+
+    function updateBulkBar() {
+      const bar = document.getElementById('bulkBar');
+      const count = selectedIds.size;
+      document.getElementById('bulkCount').textContent = `${count} selected`;
+      bar.classList.toggle('visible', count > 0);
+    }
+
+    function clearSelection() {
+      selectedIds.clear();
+      document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+      document.getElementById('selectAll').checked = false;
+      updateBulkBar();
+    }
+
+    async function bulkDelete() {
+      if (!selectedIds.size) return;
+      if (await confirmAction(`Delete ${selectedIds.size} selected product(s)? This cannot be undone.`, 'Bulk Delete', '🗑️ Delete All', 'danger')) {
+        let ok = 0, fail = 0;
+        for (const id of selectedIds) {
+          try { await ProductsAPI.delete(id); ok++; } catch { fail++; }
+        }
+        clearSelection();
+        loadProducts();
+        toast(fail === 0 ? 'success' : 'warning', 'Bulk Delete', `${ok} deleted${fail ? `, ${fail} failed` : ''}`);
+      }
+    }
+
+    async function init() {
+      try {
+        categories = await CategoriesAPI.list();
+        const catSelect = document.getElementById('pCat');
+        const catFilter = document.getElementById('catFilter');
+        categories.forEach(c => { catSelect.add(new Option(c.name,c.id)); catFilter.add(new Option(c.name,c.id)); });
+        loadProducts();
+        document.querySelectorAll('input[name="adjType"]').forEach(r => {
+          r.addEventListener('change', e => {
+            document.querySelectorAll('input[name="adjType"]').forEach(el => { el.parentElement.style.border='1px solid var(--border)'; el.parentElement.style.opacity='0.5'; });
+            e.target.parentElement.style.border='2px solid currentColor'; e.target.parentElement.style.opacity='1';
+          });
+        });
+        document.querySelector('input[name="adjType"]:checked').dispatchEvent(new Event('change'));
+      } catch(e) { toast('error','Init failed',e.message); }
+    }
+
+    async function loadProducts() {
+      const params = {
+        search: document.getElementById('searchInput').value,
+        category: document.getElementById('catFilter').value,
+        low_stock: document.getElementById('lowStockFilter').checked ? 1 : 0
+      };
+      try { products = await ProductsAPI.list(params); renderTable(); }
+      catch(e) { toast('error','Load failed',e.message); }
+    }
+
+    function renderTable() {
+      const tb = document.querySelector('#productTable tbody');
+      if (!products.length) {
+        tb.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:50px;color:var(--text-muted);">
+          <div style="font-size:36px;margin-bottom:8px;">📦</div>No products found.</td></tr>`;
+        return;
+      }
+      tb.innerHTML = products.map(p => {
+        const isSelected = selectedIds.has(p.id);
+        let rowClass = '';
+        if (p.stock_qty == 0) rowClass = 'stock-critical';
+        else if (p.stock_qty <= p.min_stock) rowClass = 'stock-low';
+
+        const cBox = colorBoxHtml(p.color);
+        const colorLabel = p.color ? `<span class="color-label-inline">${cBox} ${COLOR_NAMES[p.color?.toUpperCase()]||p.color}</span>` : '';
+        const imgHtml = p.image
+          ? `<img src="${p.image}" class="product-img-thumb" onerror="this.src='assets/no-image.png'">`
+          : `<div class="product-img-thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px;background:#f1f5f9;color:#cbd5e1">📷</div>`;
+
+        const maxRef = Math.max(p.stock_qty * 1.5, p.min_stock * 3, 20);
+        const stockBar = stockProgressBar(p.stock_qty, p.min_stock, maxRef);
+
+        return `
+          <tr class="${rowClass}">
+            <td><input type="checkbox" class="row-checkbox" value="${p.id}" ${isSelected?'checked':''} onchange="rowCheckChange(${p.id},this.checked)"></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:12px">
+                ${imgHtml}
+                <div>
+                  <div style="font-weight:700;color:var(--text-primary);margin-bottom:2px;display:flex;align-items:center;gap:6px">${p.name}${colorLabel}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">SKU: ${p.sku} | Unit: ${p.unit}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-muted">${p.category_name||'Uncategorized'}</span></td>
+            <td>
+              <div style="font-weight:700;color:var(--text-accent)">Sell: ${formatCurrency(p.sell_price)}</div>
+              <div style="font-size:11px;color:var(--text-muted)">Cost: ${formatCurrency(p.cost_price||0)}</div>
+            </td>
+            <td>${stockBar}</td>
+            <td style="color:var(--text-muted)">${p.min_stock}</td>
+            <td style="text-align:right" class="no-print">
+              <button class="btn btn-sm btn-ghost" title="Edit Product" onclick="openProductModal(${p.id})">✏️</button>
+              <button class="btn btn-sm btn-ghost" title="Delete Product" onclick="delProduct(${p.id})" style="color:var(--danger)">🗑️</button>
+              <button class="btn btn-sm btn-success" title="Stock IN" onclick="openStockModal(${p.id},'in')" style="padding:4px 8px;margin-left:8px;">➕ IN</button>
+              <button class="btn btn-sm btn-danger" title="Stock OUT" onclick="openStockModal(${p.id},'out')" style="padding:4px 8px;margin-left:4px;">➖ OUT</button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function openProductModal(id=null) {
+      document.getElementById('productForm').reset();
+      document.getElementById('pId').value = id||'';
+      document.getElementById('pmTitle').textContent = id ? 'Edit Product' : 'Add New Product';
+      if (id) {
+        const p = products.find(x => x.id==id);
+        if (p) {
+          document.getElementById('pName').value = p.name;
+          document.getElementById('pCat').value = p.category_id||'';
+          document.getElementById('pSku').value = p.sku;
+          document.getElementById('pUnit').value = p.unit;
+          document.getElementById('pCost').value = p.cost_price;
+          document.getElementById('pSell').value = p.sell_price;
+          document.getElementById('pMinStock').value = p.min_stock;
+          document.getElementById('pDesc').value = p.description||'';
+          document.getElementById('pColor').value = p.color||'';
+          updateColorPreview();
+          if (p.image) { showPreview(p.image); document.getElementById('pImagePath').value = p.image; }
+          else removeImage();
+        }
+        document.getElementById('pStock').parentElement.style.display='none';
+      } else {
+        document.getElementById('pStock').parentElement.style.display='block';
+        removeImage();
+      }
+      openModal('productModal');
+    }
+
+    async function saveProduct() {
+      const id = document.getElementById('pId').value;
+      const data = {
+        name: document.getElementById('pName').value.trim(),
+        category_id: document.getElementById('pCat').value||null,
+        sku: document.getElementById('pSku').value.trim(),
+        unit: document.getElementById('pUnit').value,
+        cost_price: document.getElementById('pCost').value,
+        sell_price: document.getElementById('pSell').value,
+        min_stock: document.getElementById('pMinStock').value,
+        description: document.getElementById('pDesc').value.trim(),
+        color: document.getElementById('pColor').value||null,
+        image: document.getElementById('pImagePath').value||null
+      };
+      if (!id) data.stock_qty = document.getElementById('pStock').value;
+      if (!data.name||!data.sell_price) return toast('warning','Validation','Name and Sell Price required');
+      const btn = event.target;
+      btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Saving...';
+      try {
+        if (id) { await ProductsAPI.update(id,data); toast('success','Updated','Product saved'); }
+        else { await ProductsAPI.create(data); toast('success','Created','Product created'); }
+        closeModal('productModal'); loadProducts();
+      } catch(e) { toast('error','Error',e.message); }
+      finally { btn.disabled=false; btn.innerHTML='Save Product'; }
+    }
+
+    async function previewImage(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => showPreview(e.target.result);
+        reader.readAsDataURL(input.files[0]);
+        try {
+          toast('info','Uploading...','Uploading product image');
+          const res = await ProductsAPI.uploadImage(input.files[0]);
+          document.getElementById('pImagePath').value = res.path;
+          toast('success','Uploaded','Image uploaded successfully');
+        } catch(e) { toast('error','Upload Error',e.message); removeImage(); }
+      }
+    }
+
+    function showPreview(src) {
+      document.getElementById('imagePreview').src = src;
+      document.getElementById('imagePreview').style.display='block';
+      document.getElementById('uploadPlaceholder').style.display='none';
+      document.getElementById('btnRemoveImage').style.display='inline-flex';
+    }
+
+    function removeImage() {
+      document.getElementById('imageInput').value='';
+      document.getElementById('imagePreview').src='';
+      document.getElementById('imagePreview').style.display='none';
+      document.getElementById('uploadPlaceholder').style.display='flex';
+      document.getElementById('btnRemoveImage').style.display='none';
+      document.getElementById('pImagePath').value='';
+    }
+
+    async function delProduct(id) {
+      if (await confirmAction('Are you sure you want to delete this product? This action cannot be undone.','Delete Product','🗑️ Delete','danger')) {
+        try { await ProductsAPI.delete(id); toast('success','Deleted','Product deleted'); loadProducts(); }
+        catch(e) { toast('error','Error',e.message); }
+      }
+    }
+
+    function openStockModal(id, type) {
+      const p = products.find(x => x.id==id);
+      if (!p) return;
+      document.getElementById('adjProductId').value = id;
+      document.getElementById('adjProductName').textContent = p.name;
+      document.getElementById('adjQty').value = 1;
+      document.getElementById('adjNote').value = '';
+      document.querySelector(`input[name="adjType"][value="${type}"]`).checked=true;
+      document.querySelector('input[name="adjType"]:checked').dispatchEvent(new Event('change'));
+      openModal('stockModal');
+      setTimeout(() => document.getElementById('adjQty').focus(), 100);
+    }
+
+    async function submitStockAdj() {
+      const id = document.getElementById('adjProductId').value;
+      const type = document.querySelector('input[name="adjType"]:checked').value;
+      const qty = parseInt(document.getElementById('adjQty').value);
+      const note = document.getElementById('adjNote').value.trim();
+      if (qty<=0||isNaN(qty)) return toast('warning','Invalid Input','Quantity must be > 0');
+      try {
+        const res = await StockAPI.adjust({ product_id:id, type, quantity:qty, note });
+        toast('success','Stock Updated',`New balance: ${res.new_stock}`);
+        closeModal('stockModal'); loadProducts();
+      } catch(e) { toast('error','Adjustment Failed',e.message); }
+    }
+
+    function exportInventory() {
+      if (!products.length) return toast('warning','No Data','No products to export');
+      const headers = ['SKU','Name','Category','Unit','Cost Price','Sell Price','Stock','Min Stock','Color'];
+      const rows = products.map(p => [p.sku,p.name,p.category_name||'',p.unit,p.cost_price,p.sell_price,p.stock_qty,p.min_stock,p.color||'']);
+      exportToCSV(headers, rows, `MINYARA_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', debounce(loadProducts,400));
+    document.getElementById('catFilter').addEventListener('change', loadProducts);
+    document.getElementById('lowStockFilter').addEventListener('change', loadProducts);
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
