@@ -348,7 +348,7 @@ async function runGlobalSearch() {
                   <div class="global-search-result-name">${b.bill_no}</div>
                   <div class="global-search-result-sub">${b.customer_name || 'Walk-in'} • ${formatDate(b.created_at)}</div>
                 </div>
-                <span class="global-search-result-badge">${formatCurrency(b.total_amount)}</span>
+                <span class="global-search-result-badge">${formatCurrency(b.total)}</span>
               </div>`).join('');
         }
         if (!html) {
@@ -423,15 +423,29 @@ function formatCurrency(val) {
 }
 
 // ─── Format Date ─────────────────────────────────────────────
+function parseDBDate(str) {
+    if (!str) return new Date();
+    if (str instanceof Date) return str;
+    let formatted = str;
+    if (!str.includes('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+        if (!str.includes('T')) {
+            formatted = str.replace(' ', 'T');
+        }
+        formatted += 'Z';
+    }
+    return new Date(formatted);
+}
+
+// ─── Format Date ─────────────────────────────────────────────
 function formatDate(str) {
     if (!str) return '-';
-    const isoStr = str.includes('T') ? str : str.replace(' ', 'T') + '+05:30';
-    return new Date(isoStr).toLocaleDateString('en-US', { timeZone: 'Asia/Colombo', day: '2-digit', month: 'short', year: 'numeric' });
+    const date = parseDBDate(str);
+    return date.toLocaleDateString('en-US', { timeZone: 'Asia/Colombo', day: '2-digit', month: 'short', year: 'numeric' });
 }
 function formatDateTime(str) {
     if (!str) return '-';
-    const isoStr = str.includes('T') ? str : str.replace(' ', 'T') + '+05:30';
-    return new Date(isoStr).toLocaleString('en-US', { timeZone: 'Asia/Colombo', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const date = parseDBDate(str);
+    return date.toLocaleString('en-US', { timeZone: 'Asia/Colombo', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 // ─── Debounce ─────────────────────────────────────────────────

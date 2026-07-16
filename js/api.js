@@ -68,7 +68,43 @@ const DEFAULT_SETTINGS = {
     invoice_footer: ''
 };
 
-function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function parseDBDate(str) {
+    if (!str) return new Date();
+    if (str instanceof Date) return str;
+    let formatted = str;
+    if (!str.includes('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+        if (!str.includes('T')) {
+            formatted = str.replace(' ', 'T');
+        }
+        formatted += 'Z';
+    }
+    return new Date(formatted);
+}
+
+function toColomboDate(date) {
+    const d = parseDBDate(date);
+    return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Colombo' }));
+}
+
+function localToUTCString(dateStr, timeStr) {
+    if (!dateStr) return '';
+    try {
+        const date = new Date(`${dateStr}T${timeStr}+05:30`);
+        return date.toISOString().replace(/\.\d+Z$/, '').replace('Z', '');
+    } catch(e) {
+        return `${dateStr}T${timeStr}`;
+    }
+}
+
+function getLocalDateString(date) {
+    const d = toColomboDate(date);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function startOfDay(d) { const x = toColomboDate(d); x.setHours(0, 0, 0, 0); return x; }
 function isSameDay(a, b) { return startOfDay(a).getTime() === startOfDay(b).getTime(); }
 function isSameWeek(a, b) {
     const da = startOfDay(a), db = startOfDay(b);
@@ -77,13 +113,20 @@ function isSameWeek(a, b) {
     const monB = new Date(db); monB.setDate(db.getDate() - dayB);
     return monA.getTime() === monB.getTime();
 }
-function isSameMonth(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth(); }
-function isSameYear(a, b) { return a.getFullYear() === b.getFullYear(); }
+function isSameMonth(a, b) {
+    const da = toColomboDate(a), db = toColomboDate(b);
+    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth();
+}
+function isSameYear(a, b) {
+    const da = toColomboDate(a), db = toColomboDate(b);
+    return da.getFullYear() === db.getFullYear();
+}
 function paidBills(bills) { return bills.filter(b => b.status === 'paid'); }
 function sumTotal(bills) { return bills.reduce((s, b) => s + parseFloat(b.total || 0), 0); }
-function monthLabel(date) { return date.toLocaleString('en-US', { month: 'short', year: 'numeric' }); }
+function monthLabel(date) { return toColomboDate(date).toLocaleString('en-US', { month: 'short', year: 'numeric' }); }
 function getISOWeek(date) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const colombo = toColomboDate(date);
+    const d = new Date(Date.UTC(colombo.getFullYear(), colombo.getMonth(), colombo.getDate()));
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
@@ -259,12 +302,18 @@ const CustomersAPI = {
 const BillsAPI = {
     list: async (params = {}) => {
         let q = sb.from('bills').select('*').order('created_at', { ascending: false }).limit(200);
-        if (params.from) q = q.gte('created_at', params.from + 'T00:00:00');
-        if (params.to) q = q.lte('created_at', params.to + 'T23:59:59');
+        if (params.from) q = q.gte('created_at', localToUTCString(params.from, '00:00:00'));
+        if (params.to) q = q.lte('created_at', localToUTCString(params.to, '23:59:59'));
+        if (params.payment_method) q = q.eq('payment_method', params.payment_method);
+        if (params.status) q = q.eq('status', params.status);
         let rows = unwrap(await q);
         if (params.search) {
             const s = params.search.toLowerCase();
-            rows = rows.filter(b => (b.bill_no || '').toLowerCase().includes(s) || (b.customer_name || '').toLowerCase().includes(s));
+            rows = rows.filter(b => 
+                (b.bill_no || '').toLowerCase().includes(s) || 
+                (b.customer_name || '').toLowerCase().includes(s) || 
+                (b.customer_phone || '').toLowerCase().includes(s)
+            );
         }
         return rows;
     },
@@ -312,6 +361,7 @@ const BillsAPI = {
 const DashboardAPI = {
     stats: async () => {
         const now = new Date();
+        const colomboNow = toColomboDate(now);
         const products = unwrap(await sb.from('products').select('*').eq('is_active', true));
         const bills = unwrap(await sb.from('bills').select('*').order('created_at', { ascending: false }));
         const paid = paidBills(bills);
@@ -320,18 +370,18 @@ const DashboardAPI = {
             const price = parseFloat(p.cost_price) > 0 ? parseFloat(p.cost_price) : parseFloat(p.sell_price);
             return s + price * (p.stock_qty || 0);
         }, 0);
-        const todayPaid = paid.filter(b => isSameDay(new Date(b.created_at), now));
-        const weekPaid = paid.filter(b => isSameWeek(new Date(b.created_at), now));
-        const monthPaid = paid.filter(b => isSameMonth(new Date(b.created_at), now));
-        const yearPaid = paid.filter(b => isSameYear(new Date(b.created_at), now));
+        const todayPaid = paid.filter(b => isSameDay(b.created_at, colomboNow));
+        const weekPaid = paid.filter(b => isSameWeek(b.created_at, colomboNow));
+        const monthPaid = paid.filter(b => isSameMonth(b.created_at, colomboNow));
+        const yearPaid = paid.filter(b => isSameYear(b.created_at, colomboNow));
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const weekTotals = Array(7).fill(0);
-        weekPaid.forEach(b => { weekTotals[new Date(b.created_at).getDay()] += parseFloat(b.total || 0); });
+        weekPaid.forEach(b => { weekTotals[toColomboDate(b.created_at).getDay()] += parseFloat(b.total || 0); });
         const chartDaily = daysOfWeek.map((label, i) => ({ label, value: weekTotals[i] }));
         const monthlyMap = {};
-        const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-        paid.filter(b => new Date(b.created_at) >= twelveMonthsAgo).forEach(b => {
-            const d = new Date(b.created_at);
+        const twelveMonthsAgo = new Date(colomboNow.getFullYear(), colomboNow.getMonth() - 11, 1);
+        paid.filter(b => toColomboDate(b.created_at) >= twelveMonthsAgo).forEach(b => {
+            const d = toColomboDate(b.created_at);
             const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
             monthlyMap[key] = (monthlyMap[key] || 0) + parseFloat(b.total || 0);
         });
@@ -340,8 +390,8 @@ const DashboardAPI = {
             return { label: monthLabel(new Date(y, m - 1, 1)), value: monthlyMap[key] };
         });
         const yearlyMap = {};
-        paid.filter(b => new Date(b.created_at).getFullYear() >= now.getFullYear() - 4).forEach(b => {
-            const y = new Date(b.created_at).getFullYear();
+        paid.filter(b => toColomboDate(b.created_at).getFullYear() >= colomboNow.getFullYear() - 4).forEach(b => {
+            const y = toColomboDate(b.created_at).getFullYear();
             yearlyMap[y] = (yearlyMap[y] || 0) + parseFloat(b.total || 0);
         });
         const chartYearly = Object.keys(yearlyMap).sort().map(y => ({ label: y, value: yearlyMap[y] }));
@@ -350,8 +400,8 @@ const DashboardAPI = {
         const catMap = Object.fromEntries(cats.map(c => [c.id, c.name]));
         const lowStockItems = lowStockProducts.sort((a, b) => a.stock_qty - b.stock_qty).slice(0, 8)
             .map(p => ({ name: p.name, stock_qty: p.stock_qty, min_stock: p.min_stock, category: catMap[p.category_id] || '' }));
-        const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentPaidIds = paid.filter(b => new Date(b.created_at) >= thirtyDaysAgo).map(b => b.id);
+        const thirtyDaysAgo = new Date(colomboNow); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentPaidIds = paid.filter(b => toColomboDate(b.created_at) >= thirtyDaysAgo).map(b => b.id);
         const recentItems = await fetchBillItemsForBills(recentPaidIds);
         const topMap = {};
         recentItems.forEach(i => {
@@ -368,7 +418,7 @@ const DashboardAPI = {
             sales_week: Math.round(sumTotal(weekPaid) * 100) / 100,
             sales_month: Math.round(sumTotal(monthPaid) * 100) / 100,
             sales_year: Math.round(sumTotal(yearPaid) * 100) / 100,
-            today_bill_count: bills.filter(b => isSameDay(new Date(b.created_at), now)).length,
+            today_bill_count: bills.filter(b => isSameDay(b.created_at, colomboNow)).length,
             chart_daily: chartDaily, chart_monthly: chartMonthly, chart_yearly: chartYearly,
             recent_bills: recentBills, low_stock_items: lowStockItems, top_products: topProducts
         };
@@ -378,11 +428,11 @@ const DashboardAPI = {
         const m = parseInt(month, 10) || (new Date().getMonth() + 1);
         const y = parseInt(year, 10) || new Date().getFullYear();
         const daysInMonth = new Date(y, m, 0).getDate();
-        const from = `${y}-${String(m).padStart(2, '0')}-01T00:00:00`;
-        const to = `${y}-${String(m).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}T23:59:59`;
-        const bills = paidBills(unwrap(await sb.from('bills').select('total, created_at').eq('status', 'paid').gte('created_at', from).lte('created_at', to)));
+        const from = localToUTCString(`${y}-${String(m).padStart(2, '0')}-01`, '00:00:00');
+        const to = localToUTCString(`${y}-${String(m).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`, '23:59:59');
+        const bills = unwrap(await sb.from('bills').select('total, created_at, status').eq('status', 'paid').gte('created_at', from).lte('created_at', to));
         const map = {};
-        bills.forEach(b => { const day = new Date(b.created_at).getDate(); map[day] = (map[day] || 0) + parseFloat(b.total || 0); });
+        bills.forEach(b => { const day = toColomboDate(b.created_at).getDate(); map[day] = (map[day] || 0) + parseFloat(b.total || 0); });
         const data = [];
         for (let d = 1; d <= daysInMonth; d++) data.push({ label: d, revenue: Math.round((map[d] || 0) * 100) / 100 });
         return { month: m, year: y, days_in_month: daysInMonth, data };
@@ -393,13 +443,14 @@ const DashboardAPI = {
 const AnalyticsAPI = {
     charts: async (period = 'year') => {
         const now = new Date();
+        const colomboNow = toColomboDate(now);
         const bills = unwrap(await sb.from('bills').select('*').eq('status', 'paid'));
         const filtered = bills.filter(b => {
-            const d = new Date(b.created_at);
-            if (period === 'today') return isSameDay(d, now);
-            if (period === 'week') return isSameWeek(d, now);
-            if (period === 'month') return isSameMonth(d, now);
-            if (period === 'year') return isSameYear(d, now);
+            const d = toColomboDate(b.created_at);
+            if (period === 'today') return isSameDay(b.created_at, colomboNow);
+            if (period === 'week') return isSameWeek(b.created_at, colomboNow);
+            if (period === 'month') return isSameMonth(b.created_at, colomboNow);
+            if (period === 'year') return isSameYear(b.created_at, colomboNow);
             return true;
         });
         const items = await fetchBillItemsForBills(filtered.map(b => b.id));
@@ -410,20 +461,20 @@ const AnalyticsAPI = {
         let revenueTrend = [];
         if (period === 'today') {
             const hours = {};
-            filtered.forEach(b => { const h = new Date(b.created_at).getHours(); hours[h] = (hours[h] || 0) + parseFloat(b.total || 0); });
+            filtered.forEach(b => { const h = toColomboDate(b.created_at).getHours(); hours[h] = (hours[h] || 0) + parseFloat(b.total || 0); });
             revenueTrend = Object.keys(hours).sort((a, b) => a - b).map(h => ({ label: h + ':00', value: hours[h] }));
         } else if (period === 'week') {
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const vals = Array(7).fill(0);
-            filtered.forEach(b => { vals[new Date(b.created_at).getDay()] += parseFloat(b.total || 0); });
+            filtered.forEach(b => { vals[toColomboDate(b.created_at).getDay()] += parseFloat(b.total || 0); });
             revenueTrend = days.map((label, i) => ({ label, value: vals[i] }));
         } else if (period === 'month') {
             const days = {};
-            filtered.forEach(b => { const day = new Date(b.created_at).getDate(); days[day] = (days[day] || 0) + parseFloat(b.total || 0); });
+            filtered.forEach(b => { const day = toColomboDate(b.created_at).getDate(); days[day] = (days[day] || 0) + parseFloat(b.total || 0); });
             revenueTrend = Object.keys(days).sort((a, b) => a - b).map(d => ({ label: d, value: days[d] }));
         } else {
             const months = {};
-            filtered.forEach(b => { const key = new Date(b.created_at).getMonth(); months[key] = (months[key] || 0) + parseFloat(b.total || 0); });
+            filtered.forEach(b => { const key = toColomboDate(b.created_at).getMonth(); months[key] = (months[key] || 0) + parseFloat(b.total || 0); });
             revenueTrend = Object.keys(months).sort((a, b) => a - b).map(m => ({ label: new Date(2000, parseInt(m, 10), 1).toLocaleString('en-US', { month: 'long' }), value: months[m] }));
         }
         const catSales = {};
@@ -443,22 +494,23 @@ const AnalyticsAPI = {
     },
     manual: async (period = 'monthly', dateVal = '') => {
         const now = new Date();
+        const colomboNow = toColomboDate(now);
         let filtered = unwrap(await sb.from('bills').select('*').eq('status', 'paid'));
         if (period === 'daily') {
-            const d = dateVal || now.toISOString().slice(0, 10);
-            filtered = filtered.filter(b => b.created_at.slice(0, 10) === d);
+            const d = dateVal || getLocalDateString(colomboNow);
+            filtered = filtered.filter(b => getLocalDateString(b.created_at) === d);
         } else if (period === 'weekly') {
-            let weekVal = dateVal || `${now.getFullYear()}-W${String(getISOWeek(now)).padStart(2, '0')}`;
+            let weekVal = dateVal || `${colomboNow.getFullYear()}-W${String(getISOWeek(colomboNow)).padStart(2, '0')}`;
             const matchYear = parseInt(weekVal.slice(0, 4), 10);
             const matchWeek = parseInt(weekVal.split('W')[1], 10);
-            filtered = filtered.filter(b => { const d = new Date(b.created_at); return d.getFullYear() === matchYear && getISOWeek(d) === matchWeek; });
+            filtered = filtered.filter(b => { const d = toColomboDate(b.created_at); return d.getFullYear() === matchYear && getISOWeek(d) === matchWeek; });
         } else if (period === 'monthly') {
-            const val = dateVal || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const val = dateVal || `${colomboNow.getFullYear()}-${String(colomboNow.getMonth() + 1).padStart(2, '0')}`;
             const [y, m] = val.split('-').map(Number);
-            filtered = filtered.filter(b => { const d = new Date(b.created_at); return d.getFullYear() === y && d.getMonth() + 1 === m; });
+            filtered = filtered.filter(b => { const d = toColomboDate(b.created_at); return d.getFullYear() === y && d.getMonth() + 1 === m; });
         } else if (period === 'yearly') {
-            const y = parseInt(dateVal || now.getFullYear(), 10);
-            filtered = filtered.filter(b => new Date(b.created_at).getFullYear() === y);
+            const y = parseInt(dateVal || colomboNow.getFullYear(), 10);
+            filtered = filtered.filter(b => toColomboDate(b.created_at).getFullYear() === y);
         }
         const items = await fetchBillItemsForBills(filtered.map(b => b.id));
         const itemMap = {};
@@ -472,20 +524,23 @@ const AnalyticsAPI = {
         let chart = [];
         if (period === 'daily') {
             const hours = {};
-            filtered.forEach(b => { const h = new Date(b.created_at).getHours(); hours[h] = (hours[h] || 0) + parseFloat(b.total || 0); });
+            filtered.forEach(b => { const h = toColomboDate(b.created_at).getHours(); hours[h] = (hours[h] || 0) + parseFloat(b.total || 0); });
             chart = Object.keys(hours).sort((a, b) => a - b).map(h => ({ label: h + ':00', value: hours[h] }));
         } else if (period === 'monthly') {
             const days = {};
-            filtered.forEach(b => { const day = new Date(b.created_at).getDate(); days[day] = (days[day] || 0) + parseFloat(b.total || 0); });
+            filtered.forEach(b => { const day = toColomboDate(b.created_at).getDate(); days[day] = (days[day] || 0) + parseFloat(b.total || 0); });
             chart = Object.keys(days).sort((a, b) => a - b).map(d => ({ label: d, value: days[d] }));
         } else if (period === 'yearly') {
             const months = {};
-            filtered.forEach(b => { const m = new Date(b.created_at).getMonth(); months[m] = (months[m] || 0) + parseFloat(b.total || 0); });
+            filtered.forEach(b => { const m = toColomboDate(b.created_at).getMonth(); months[m] = (months[m] || 0) + parseFloat(b.total || 0); });
             chart = Object.keys(months).sort((a, b) => a - b).map(m => ({ label: new Date(2000, parseInt(m, 10), 1).toLocaleString('en-US', { month: 'long' }), value: months[m] }));
         } else {
             const dayMap = {};
-            filtered.forEach(b => { const key = b.created_at.slice(0, 10); dayMap[key] = (dayMap[key] || 0) + parseFloat(b.total || 0); });
-            chart = Object.keys(dayMap).sort().map(k => ({ label: new Date(k + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }), value: dayMap[k] }));
+            filtered.forEach(b => { const key = getLocalDateString(b.created_at); dayMap[key] = (dayMap[key] || 0) + parseFloat(b.total || 0); });
+            chart = Object.keys(dayMap).sort().map(k => {
+                const d = new Date(k + 'T12:00:00');
+                return { label: d.toLocaleDateString('en-US', { weekday: 'long' }), value: dayMap[k] };
+            });
         }
         return { revenue: Math.round(sumTotal(filtered) * 100) / 100, bills: filtered.length, items: itemsSold, chart };
     }
