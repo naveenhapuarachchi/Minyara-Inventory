@@ -613,8 +613,7 @@ const ChatAPI = {
         if (!(newText || '').trim()) throw new Error('Message cannot be empty.');
         unwrap(await sb.from('chat_messages')
             .update({ message: newText.trim(), edited_at: new Date().toISOString().replace(/\.\d+Z$/, '') })
-            .eq('id', id)
-            .eq('username', username.trim()));
+            .eq('id', id));
         return { ok: true };
     },
     delete: async (id, username) => {
@@ -622,8 +621,7 @@ const ChatAPI = {
         if (!CHAT_ALLOWED.includes(u)) throw new Error('Access denied.');
         unwrap(await sb.from('chat_messages')
             .update({ is_deleted: true })
-            .eq('id', id)
-            .eq('username', username.trim()));
+            .eq('id', id));
         return { ok: true };
     }
 };

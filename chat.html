@@ -1292,19 +1292,17 @@
             bubbleWrap.appendChild(bubble);
           }
 
-          // User Action Buttons (Edit/Delete) - only for own messages
-          if (isMine) {
-            const actions = document.createElement('div');
-            actions.className = 'chat-message-actions';
-            
-            // Only text messages can be text-edited
-            if (msg.message_type === 'text') {
-              actions.innerHTML += `<button class="chat-action-btn" onclick="startEditMessage(${msg.id})" title="Edit message">✏️</button>`;
-            }
-            
-            actions.innerHTML += `<button class="chat-action-btn delete" onclick="deleteMessage(${msg.id})" title="Delete message">🗑️</button>`;
-            bubbleWrap.appendChild(actions);
+          // User Action Buttons (Edit/Delete) - available to both mal and naveen
+          const actions = document.createElement('div');
+          actions.className = 'chat-message-actions';
+          
+          // Only text messages can be text-edited
+          if (msg.message_type === 'text') {
+            actions.innerHTML += `<button class="chat-action-btn" onclick="startEditMessage(${msg.id})" title="Edit message">✏️</button>`;
           }
+          
+          actions.innerHTML += `<button class="chat-action-btn delete" onclick="deleteMessage(${msg.id})" title="Delete message">🗑️</button>`;
+          bubbleWrap.appendChild(actions);
         }
 
         msgContainer.appendChild(bubbleWrap);
