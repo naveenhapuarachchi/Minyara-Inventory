@@ -560,6 +560,24 @@ const SettingsAPI = {
     }
 };
 
+// ─── Chat Room ────────────────────────────────────────────────
+const ChatAPI = {
+    list: async (limit = 100) => {
+        return unwrap(await sb.from('chat_messages').select('*').order('created_at', { ascending: true }).limit(limit));
+    },
+    send: async (username, message) => {
+        const u = (username || '').toLowerCase().trim();
+        if (!['mal', 'naveen'].includes(u)) {
+            throw new Error('Access denied. Username not authorized.');
+        }
+        unwrap(await sb.from('chat_messages').insert({
+            username: username.trim(),
+            message: message.trim()
+        }));
+        return { message: 'Message sent successfully' };
+    }
+};
+
 window.CategoriesAPI = CategoriesAPI;
 window.ProductsAPI = ProductsAPI;
 window.StockAPI = StockAPI;
@@ -568,3 +586,4 @@ window.BillsAPI = BillsAPI;
 window.DashboardAPI = DashboardAPI;
 window.AnalyticsAPI = AnalyticsAPI;
 window.SettingsAPI = SettingsAPI;
+window.ChatAPI = ChatAPI;

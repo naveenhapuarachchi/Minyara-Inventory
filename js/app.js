@@ -211,6 +211,7 @@ document.addEventListener('keydown', e => {
             'a': 'analytics.html',
             'c': 'categories.html',
             's': 'settings.html',
+            't': 'chat.html',
         };
         if (routes[e.key]) {
             e.preventDefault();
