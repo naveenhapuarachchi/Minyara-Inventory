@@ -561,20 +561,70 @@ const SettingsAPI = {
 };
 
 // ─── Chat Room ────────────────────────────────────────────────
+const CHAT_ALLOWED = ['mal', 'naveen'];
+const CHAT_BUCKET  = 'chat-attachments';
+const CHAT_MAX_MB  = 5;
+const SUPABASE_STORAGE_URL = 'https://uiizyekyixavhmverrvq.supabase.co';
+
 const ChatAPI = {
-    list: async (limit = 100) => {
-        return unwrap(await sb.from('chat_messages').select('*').order('created_at', { ascending: true }).limit(limit));
+    list: async (limit = 200) => {
+        return unwrap(await sb.from('chat_messages')
+            .select('*')
+            .eq('is_deleted', false)
+            .order('created_at', { ascending: true })
+            .limit(limit));
     },
     send: async (username, message) => {
         const u = (username || '').toLowerCase().trim();
-        if (!['mal', 'naveen'].includes(u)) {
-            throw new Error('Access denied. Username not authorized.');
-        }
+        if (!CHAT_ALLOWED.includes(u)) throw new Error('Access denied. Username not authorized.');
+        if (!(message || '').trim()) throw new Error('Message cannot be empty.');
         unwrap(await sb.from('chat_messages').insert({
             username: username.trim(),
-            message: message.trim()
+            message: message.trim(),
+            message_type: 'text'
         }));
-        return { message: 'Message sent successfully' };
+        return { ok: true };
+    },
+    sendFile: async (username, file) => {
+        const u = (username || '').toLowerCase().trim();
+        if (!CHAT_ALLOWED.includes(u)) throw new Error('Access denied. Username not authorized.');
+        const maxBytes = CHAT_MAX_MB * 1024 * 1024;
+        if (file.size > maxBytes) throw new Error(`File too large. Maximum size is ${CHAT_MAX_MB}MB.`);
+        const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${u}/${Date.now()}_${safe}`;
+        const { error: upErr } = await sb.storage.from(CHAT_BUCKET).upload(path, file, { upsert: false, contentType: file.type });
+        if (upErr) throw new Error('Upload failed: ' + upErr.message);
+        const fileUrl = `${SUPABASE_STORAGE_URL}/storage/v1/object/public/${CHAT_BUCKET}/${path}`;
+        const isImage = file.type.startsWith('image/');
+        unwrap(await sb.from('chat_messages').insert({
+            username: username.trim(),
+            message: file.name,
+            message_type: isImage ? 'image' : 'document',
+            file_url: fileUrl,
+            file_name: file.name,
+            file_size: file.size,
+            file_type: file.type
+        }));
+        return { ok: true, fileUrl };
+    },
+    edit: async (id, username, newText) => {
+        const u = (username || '').toLowerCase().trim();
+        if (!CHAT_ALLOWED.includes(u)) throw new Error('Access denied.');
+        if (!(newText || '').trim()) throw new Error('Message cannot be empty.');
+        unwrap(await sb.from('chat_messages')
+            .update({ message: newText.trim(), edited_at: new Date().toISOString().replace(/\.\d+Z$/, '') })
+            .eq('id', id)
+            .eq('username', username.trim()));
+        return { ok: true };
+    },
+    delete: async (id, username) => {
+        const u = (username || '').toLowerCase().trim();
+        if (!CHAT_ALLOWED.includes(u)) throw new Error('Access denied.');
+        unwrap(await sb.from('chat_messages')
+            .update({ is_deleted: true })
+            .eq('id', id)
+            .eq('username', username.trim()));
+        return { ok: true };
     }
 };
 
